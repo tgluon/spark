@@ -24,13 +24,16 @@ fi
 . "${SPARK_HOME}"/bin/load-spark-env.sh
 
 # Find the java binary
+# 当串的长度大于0时为真(串非空)
 if [ -n "${JAVA_HOME}" ]; then
   RUNNER="${JAVA_HOME}/bin/java"
 else
   if [ "$(command -v java)" ]; then
     RUNNER="java"
   else
+    # >&2把结果输出到和标准错误一样
     echo "JAVA_HOME is not set" >&2
+    # exit(0):正常运行程序并退出程序;exit(1):非正常运行导致退出程序
     exit 1
   fi
 fi
@@ -67,6 +70,8 @@ fi
 #
 # The exit code of the launcher is appended to the output, so the parent shell removes it from the
 # command array and checks the value to see if the launcher succeeded.
+# 调用了 build_command(){ “”RUNNNER"−Xmx128m−cp"Launch_classpath" org.apache.spark.lancher..Main "$@"
+# 通过 luncher.Main 方法 Spark 启动做了命名的编译。最后 exe "${CMD[@]}" 执行前面编译的命令。我们先看下如何编译命令的。
 build_command() {
   "$RUNNER" -Xmx128m $SPARK_LAUNCHER_OPTS -cp "$LAUNCH_CLASSPATH" org.apache.spark.launcher.Main "$@"
   printf "%d\0" $?
@@ -77,6 +82,11 @@ set +o posix
 CMD=()
 DELIM=$'\n'
 CMD_START_FLAG="false"
+#-d ：表示delimiter，即定界符，一般情况下是以IFS为参数的间隔，但是通过-d，我们可以定义一直读到出现执行的字符位置。
+# 例如read –d madfds value，读到有m的字符的时候就不在继续向后读，例如输入为 hello m，有效值为“hello”,
+# 请注意m前面的空格等会被删除。这种方式可以输入多个字符串，例如定义“.”作为结符号等等。
+
+# 文件/命令输出流 重定向给read 并在do-done之间处理
 while IFS= read -d "$DELIM" -r ARG; do
   if [ "$CMD_START_FLAG" == "true" ]; then
     CMD+=("$ARG")
@@ -89,6 +99,7 @@ while IFS= read -d "$DELIM" -r ARG; do
       echo "$ARG"
     fi
   fi
+    # <():进程替换
 done < <(build_command "$@")
 
 COUNT=${#CMD[@]}
