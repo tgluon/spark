@@ -39,6 +39,7 @@ object SparkSQLExample {
     val spark = SparkSession
       .builder()
       .appName("Spark SQL basic example")
+      .master("local[*]")
       .config("spark.some.config.option", "some-value")
       .getOrCreate()
 

@@ -50,15 +50,18 @@ class Main {
    */
   public static void main(String[] argsArray) throws Exception {
     checkArgument(argsArray.length > 0, "Not enough arguments: missing class name.");
-
+    // 将数组转成list
     List<String> args = new ArrayList<>(Arrays.asList(argsArray));
+    // 移除第一个元素，并返回，也就是org.apache.spark.deploy.SparkSubmit
     String className = args.remove(0);
 
+    // 打印命令
     boolean printLaunchCommand = !isEmpty(System.getenv("SPARK_PRINT_LAUNCH_COMMAND"));
     Map<String, String> env = new HashMap<>();
     List<String> cmd;
     if (className.equals("org.apache.spark.deploy.SparkSubmit")) {
       try {
+        // 解析参数并封装
         AbstractCommandBuilder builder = new SparkSubmitCommandBuilder(args);
         cmd = buildCommand(builder, env, printLaunchCommand);
       } catch (IllegalArgumentException e) {

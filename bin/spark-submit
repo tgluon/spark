@@ -16,12 +16,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
+#  -z:判断制定的变量是否存在值
 if [ -z "${SPARK_HOME}" ]; then
+  # 取当前脚本所在路径的父目录:dirname "$0"
   source "$(dirname "$0")"/find-spark-home
 fi
 
 # disable randomized hash for string in Python 3.3+
 export PYTHONHASHSEED=0
-
+# 调用了spark-class脚本,传入了SparkSubmit这个类, "$@" 的意思是传给spark-submit脚本时后面跟着的那一堆参数。
 exec "${SPARK_HOME}"/bin/spark-class org.apache.spark.deploy.SparkSubmit "$@"
