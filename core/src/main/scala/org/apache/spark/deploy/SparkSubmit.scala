@@ -915,6 +915,7 @@ private[spark] class SparkSubmit extends Logging {
     var mainClass: Class[_] = null
 
     try {
+      // 获取应用类的class
       mainClass = Utils.classForName(childMainClass)
     } catch {
       case e: ClassNotFoundException =>
@@ -932,7 +933,7 @@ private[spark] class SparkSubmit extends Logging {
         }
         throw new SparkUserAppException(CLASS_NOT_FOUND_EXIT_STATUS)
     }
-
+// 获取SparkApplication实例
     val app: SparkApplication = if (classOf[SparkApplication].isAssignableFrom(mainClass)) {
       mainClass.getConstructor().newInstance().asInstanceOf[SparkApplication]
     } else {

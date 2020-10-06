@@ -24,7 +24,7 @@ import java.net.URLClassLoader;
  * URL class loader that exposes the `addURL` method in URLClassLoader.
  */
 public class MutableURLClassLoader extends URLClassLoader {
-
+// 注册并发类加载加载器
   static {
     ClassLoader.registerAsParallelCapable();
   }
