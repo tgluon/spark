@@ -60,7 +60,7 @@ class Main {
     List<String> cmd;
     if (className.equals("org.apache.spark.deploy.SparkSubmit")) {
       try {
-        // 解析参数并封装
+       //  创建一个命令解析器,这里会优先将提交的命令中的 --master、 --deploy-mode 之类的参数解析,然后保存到 SparkSubmitCommandBuilder 中
         AbstractCommandBuilder builder = new SparkSubmitCommandBuilder(args);
         cmd = buildCommand(builder, env, printLaunchCommand);
       } catch (IllegalArgumentException e) {
@@ -68,6 +68,7 @@ class Main {
         System.err.println("Error: " + e.getMessage());
         System.err.println();
 
+        // 类名解析--class org.apache.spark.repl.Main
         MainClassOptionParser parser = new MainClassOptionParser();
         try {
           parser.parse(args);
@@ -81,10 +82,12 @@ class Main {
           help.add(parser.className);
         }
         help.add(parser.USAGE_ERROR);
+
         AbstractCommandBuilder builder = new SparkSubmitCommandBuilder(help);
         cmd = buildCommand(builder, env, printLaunchCommand);
       }
     } else {
+      // 第一个参数如果不是：org.apache.spark.deploy.SparkSubmit，则使用SparkClassCommandBuilder，解析器
       AbstractCommandBuilder builder = new SparkClassCommandBuilder(className, args);
       cmd = buildCommand(builder, env, printLaunchCommand);
     }

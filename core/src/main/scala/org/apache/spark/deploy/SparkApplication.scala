@@ -39,13 +39,15 @@ private[spark] trait SparkApplication {
 private[deploy] class JavaMainApplication(klass: Class[_]) extends SparkApplication {
 
   override def start(args: Array[String], conf: SparkConf): Unit = {
+    // 获取应用类的main方法
     val mainMethod = klass.getMethod("main", new Array[String](0).getClass)
-    if (!Modifier.isStatic(mainMethod.getModifiers)) {
+    if (!Modifier.isStatic(mainMethod.getModifiers)) { // 判断是否有静态修饰符
       throw new IllegalStateException("The main method in the given main class must be static")
     }
 
     val sysProps = conf.getAll.toMap
     sysProps.foreach { case (k, v) =>
+      // 将配置属性添加到系统属性中
       sys.props(k) = v
     }
 

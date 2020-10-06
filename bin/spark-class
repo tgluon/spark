@@ -20,7 +20,7 @@
 if [ -z "${SPARK_HOME}" ]; then
   source "$(dirname "$0")"/find-spark-home
 fi
-
+# 配置一些环境变量,它会将conf/spark-env.sh中的环境变量加载进来
 . "${SPARK_HOME}"/bin/load-spark-env.sh
 
 # Find the java binary
@@ -78,14 +78,17 @@ build_command() {
 }
 
 # Turn off posix mode since it does not allow process substitution
+# 关闭posix模式,因为它不允许进程替换。
+# 调用build_command org.apache.spark.launcher.Main拼接提交命令
 set +o posix
 CMD=()
 DELIM=$'\n'
 CMD_START_FLAG="false"
+
+# 把build_commands输出结果,循环加到数组CMD中
 #-d ：表示delimiter，即定界符，一般情况下是以IFS为参数的间隔，但是通过-d，我们可以定义一直读到出现执行的字符位置。
 # 例如read –d madfds value，读到有m的字符的时候就不在继续向后读，例如输入为 hello m，有效值为“hello”,
 # 请注意m前面的空格等会被删除。这种方式可以输入多个字符串，例如定义“.”作为结符号等等。
-
 # 文件/命令输出流 重定向给read 并在do-done之间处理
 while IFS= read -d "$DELIM" -r ARG; do
   if [ "$CMD_START_FLAG" == "true" ]; then
@@ -101,22 +104,28 @@ while IFS= read -d "$DELIM" -r ARG; do
   fi
     # <():进程替换
 done < <(build_command "$@")
-
+# 数组长度
 COUNT=${#CMD[@]}
+# 数组长度-1
 LAST=$((COUNT - 1))
+#数组的最后一个值，也就是上边$?的值
 LAUNCHER_EXIT_CODE=${CMD[$LAST]}
 
 # Certain JVM failures result in errors being printed to stdout (instead of stderr), which causes
 # the code that parses the output of the launcher to get confused. In those cases, check if the
 # exit code is an integer, and if it's not, handle it as a special error case.
+# 某些JVM失败会导致错误被打印到stdout(而不是stderr)，这会导致解析启动程序输出的代码变得混乱。
+# 在这些情况下，检查退出代码是否为整数，如果不是，将其作为特殊的错误处理。
+# 如果返回值不是数字，退出
 if ! [[ $LAUNCHER_EXIT_CODE =~ ^[0-9]+$ ]]; then
   echo "${CMD[@]}" | head -n-1 1>&2
   exit 1
 fi
-
+# 如果返回值不为0，退出，返回返回值
 if [ $LAUNCHER_EXIT_CODE != 0 ]; then
   exit $LAUNCHER_EXIT_CODE
 fi
-
+# CMD还是原来那些参数，$@
 CMD=("${CMD[@]:0:$LAST}")
+# 通过 exec "${CMD[@]}" 真正调用SparkSubmit类
 exec "${CMD[@]}"
