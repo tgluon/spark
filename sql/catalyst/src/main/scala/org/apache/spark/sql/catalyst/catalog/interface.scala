@@ -46,9 +46,9 @@ import org.apache.spark.sql.types._
  * @param resources resource types and Uris used by the function
  */
 case class CatalogFunction(
-    identifier: FunctionIdentifier,
-    className: String,
-    resources: Seq[FunctionResource])
+    identifier: FunctionIdentifier, // 描述了函数名字等基本信息
+    className: String,  // 自定义函数类名
+    resources: Seq[FunctionResource]) // 描述了文件类型（jar或者file）和文件路径
 
 
 /**

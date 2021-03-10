@@ -42,7 +42,7 @@ import org.apache.spark.util.Utils
 private[deploy] class SparkSubmitArguments(args: Seq[String], env: Map[String, String] = sys.env)
   extends SparkSubmitArgumentsParser with Logging {
   var master: String = null
-  var deployMode: String = null
+  var deployMode: String = null  // cluster | client
   var executorMemory: String = null
   var executorCores: String = null
   var totalExecutorCores: String = null
@@ -105,6 +105,7 @@ private[deploy] class SparkSubmitArguments(args: Seq[String], env: Map[String, S
   }
 
   // Set parameters from command line arguments
+  // set 从命令行输入的参数
   parse(args.asJava)
 
   // Populate `sparkProperties` map from properties file
@@ -119,6 +120,7 @@ private[deploy] class SparkSubmitArguments(args: Seq[String], env: Map[String, S
   validateArguments()
 
   /**
+   * spark-defaults.conf 指定的参数与--conf参数合并
    * Merge values from the default properties file with those specified through --conf.
    * When this is called, `sparkProperties` is already filled with configs from the latter.
    */
@@ -127,7 +129,7 @@ private[deploy] class SparkSubmitArguments(args: Seq[String], env: Map[String, S
     propertiesFile = Option(propertiesFile).getOrElse(Utils.getDefaultPropertiesFile(env))
     // Honor --conf before the defaults file
     defaultSparkProperties.foreach { case (k, v) =>
-      if (!sparkProperties.contains(k)) {
+      if (!sparkProperties.contains(k)) { // 如果不包含key，就将其存入spark属性中
         sparkProperties(k) = v
       }
     }

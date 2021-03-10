@@ -75,13 +75,20 @@ private[sql] class HiveSessionCatalog(
           // When we instantiate hive UDF wrapper class, we may throw exception if the input
           // expressions don't satisfy the hive UDF, such as type mismatch, input number
           // mismatch, etc. Here we catch the exception and throw AnalysisException instead.
+          /**
+           * isAssignableFrom:判定此 Class 对象所表示的类或接口与指定的 Class 参数所表示的类或接口是否相同，或是否是其超类或超接口。
+           * 如果是则返回 true；否则返回 false。如果该 Class 表示一个基本类型，且指定的 Class 参数正是该 Class 对象，则该方法返回 true；否则返回 false。
+           */
           if (classOf[UDF].isAssignableFrom(clazz)) {
+            // HiveSimpleUDF对应UDF
             udfExpr = Some(HiveSimpleUDF(name, new HiveFunctionWrapper(clazz.getName), input))
             udfExpr.get.dataType // Force it to check input data types.
           } else if (classOf[GenericUDF].isAssignableFrom(clazz)) {
+            // HiveGenericUDF对应GenericUDF
             udfExpr = Some(HiveGenericUDF(name, new HiveFunctionWrapper(clazz.getName), input))
             udfExpr.get.dataType // Force it to check input data types.
           } else if (classOf[AbstractGenericUDAFResolver].isAssignableFrom(clazz)) {
+            // HiveUDAFFunction对应AbstractGenericUDAFResolve以及UDAF
             udfExpr = Some(HiveUDAFFunction(name, new HiveFunctionWrapper(clazz.getName), input))
             udfExpr.get.dataType // Force it to check input data types.
           } else if (classOf[UDAF].isAssignableFrom(clazz)) {
@@ -92,6 +99,7 @@ private[sql] class HiveSessionCatalog(
               isUDAFBridgeRequired = true))
             udfExpr.get.dataType // Force it to check input data types.
           } else if (classOf[GenericUDTF].isAssignableFrom(clazz)) {
+            // HiveGenericUDTF对应GenericUDTF
             udfExpr = Some(HiveGenericUDTF(name, new HiveFunctionWrapper(clazz.getName), input))
             udfExpr.get.asInstanceOf[HiveGenericUDTF].elementSchema // Force it to check data types.
           }

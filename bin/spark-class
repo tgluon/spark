@@ -31,7 +31,7 @@ else
   if [ "$(command -v java)" ]; then
     RUNNER="java"
   else
-    # >&2把结果输出到和标准错误一样
+    # >&2:把结果输出到和标准错误一样
     echo "JAVA_HOME is not set" >&2
     # exit(0):正常运行程序并退出程序;exit(1):非正常运行导致退出程序
     exit 1
@@ -42,6 +42,7 @@ fi
 if [ -d "${SPARK_HOME}/jars" ]; then
   SPARK_JARS_DIR="${SPARK_HOME}/jars"
 else
+  # 本地调试模式使用
   SPARK_JARS_DIR="${SPARK_HOME}/assembly/target/scala-$SPARK_SCALA_VERSION/jars"
 fi
 

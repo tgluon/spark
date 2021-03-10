@@ -988,9 +988,15 @@ object SparkSubmit extends CommandLineUtils with Logging {
   private val ALL_CLUSTER_MGRS = YARN | STANDALONE | MESOS | LOCAL | KUBERNETES
 
   // Deploy modes
-  private val CLIENT = 1
-  private val CLUSTER = 2
-  private val ALL_DEPLOY_MODES = CLIENT | CLUSTER
+  private val CLIENT = 1 // 二进制：0001
+  private val CLUSTER = 2 // 二进制：0010
+  /**
+   * 如果相对应位都是 0，则结果为 0，否则为 1
+   * 0001
+   * 0010
+   * 0011
+   */
+  private val ALL_DEPLOY_MODES = CLIENT | CLUSTER // 3
 
   // Special primary resource names that represent shells rather than application jars.
   private val SPARK_SHELL = "spark-shell"

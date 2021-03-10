@@ -17,6 +17,7 @@
 package org.apache.spark.examples.sql
 
 // $example on:programmatic_schema$
+
 import org.apache.spark.sql.Row
 // $example off:programmatic_schema$
 // $example on:init_session$
@@ -32,6 +33,7 @@ object SparkSQLExample {
 
   // $example on:create_ds$
   case class Person(name: String, age: Long)
+
   // $example off:create_ds$
 
   def main(args: Array[String]): Unit = {
@@ -40,6 +42,7 @@ object SparkSQLExample {
       .builder()
       .appName("Spark SQL basic example")
       .config("spark.some.config.option", "some-value")
+      .master("local[*]")
       .getOrCreate()
 
     // For implicit conversions like converting RDDs to DataFrames
@@ -47,9 +50,9 @@ object SparkSQLExample {
     // $example off:init_session$
 
     runBasicDataFrameExample(spark)
-    runDatasetCreationExample(spark)
-    runInferSchemaExample(spark)
-    runProgrammaticSchemaExample(spark)
+    //    runDatasetCreationExample(spark)
+    //    runInferSchemaExample(spark)
+    //    runProgrammaticSchemaExample(spark)
 
     spark.stop()
   }
@@ -57,7 +60,8 @@ object SparkSQLExample {
   private def runBasicDataFrameExample(spark: SparkSession): Unit = {
     // $example on:create_df$
     val df = spark.read.json("examples/src/main/resources/people.json")
-
+    spark.sql("")
+    df.queryExecution.debug.codegen()
     // Displays the content of the DataFrame to stdout
     df.show()
     // +----+-------+

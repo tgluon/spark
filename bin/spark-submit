@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-#  -z:判断制定的变量是否存在值
+#  -z:判断指定的变量是否存在值
 if [ -z "${SPARK_HOME}" ]; then
   # 取当前脚本所在路径的父目录:dirname "$0"
   source "$(dirname "$0")"/find-spark-home
