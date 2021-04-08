@@ -330,8 +330,8 @@ case class ListQuery(
  * }}}
  */
 case class Exists(
-    plan: LogicalPlan,
-    children: Seq[Expression] = Seq.empty,
+    plan: LogicalPlan, // 子查询的LogicalPlan
+    children: Seq[Expression] = Seq.empty, // 子查询中的outer reference，在analyze 阶段会被记录在里面
     exprId: ExprId = NamedExpression.newExprId)
   extends SubqueryExpression(plan, children, exprId) with Predicate with Unevaluable {
   override def nullable: Boolean = false

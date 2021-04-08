@@ -105,12 +105,14 @@ class QueryPlanningTracker {
    * Measure the start and end time of a phase. Note that if this function is called multiple
    * times for the same phase, the recorded start time will be the start time of the first call,
    * and the recorded end time will be the end time of the last call.
+   *  这里是柯里化的一个应用，在后续代码中，我们会看到调用逻辑
    */
   def measurePhase[T](phase: String)(f: => T): T = {
     val startTime = System.currentTimeMillis()
-    val ret = f
+    val ret = f //这里调用第二个传入参数，是一个函数
     val endTime = System.currentTimeMillis
-
+    // phase 作为第一个传参，在后续调用会对同一类处理过程传同一值，用于准确计算每个阶段的耗时
+    // val PARSING = "parsing" val ANALYSIS = "analysis" val OPTIMIZATION = "optimization"
     if (phasesMap.containsKey(phase)) {
       val oldSummary = phasesMap.get(phase)
       phasesMap.put(phase, new PhaseSummary(oldSummary.startTimeMs, endTime))

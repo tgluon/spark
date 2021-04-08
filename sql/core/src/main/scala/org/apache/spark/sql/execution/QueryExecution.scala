@@ -62,7 +62,7 @@ class QueryExecution(
       UnsupportedOperationChecker.checkForBatch(analyzed)
     }
   }
-
+  // setActiveSession在SparkCore中介绍过，作用在于保证全局只有一个活动的SparkSession
   lazy val analyzed: LogicalPlan = executePhase(QueryPlanningTracker.ANALYSIS) {
     // We can't clone `logical` here, which will reset the `_analyzed` flag.
     sparkSession.sessionState.analyzer.executeAndCheck(logical, tracker)

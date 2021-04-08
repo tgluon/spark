@@ -79,6 +79,7 @@ abstract class AbstractSqlParser(conf: SQLConf) extends ParserInterface with Log
 
   /** Creates LogicalPlan for a given SQL string. */
   override def parsePlan(sqlText: String): LogicalPlan = parse(sqlText) { parser =>
+// parser.singleStatement()返回内容为语法文件中定义的最顶级节点，也即SqlBase.g4中的各主节点，visitSingleStatement用于遍历语法树，将各节点替换成LogicalPlan返回。
     astBuilder.visitSingleStatement(parser.singleStatement()) match {
       case plan: LogicalPlan => plan
       case _ =>
@@ -92,15 +93,16 @@ abstract class AbstractSqlParser(conf: SQLConf) extends ParserInterface with Log
 
   protected def parse[T](command: String)(toResult: SqlBaseParser => T): T = {
     logDebug(s"Parsing command: $command")
-
+    // 实例化 词法解释器
     val lexer = new SqlBaseLexer(new UpperCaseCharStream(CharStreams.fromString(command)))
     lexer.removeErrorListeners()
     lexer.addErrorListener(ParseErrorListener)
     lexer.legacy_setops_precedence_enbled = conf.setOpsPrecedenceEnforced
     lexer.legacy_exponent_literal_as_decimal_enabled = conf.exponentLiteralAsDecimalEnabled
     lexer.SQL_standard_keyword_behavior = conf.ansiEnabled
-
+    // 构造Token流
     val tokenStream = new CommonTokenStream(lexer)
+    // 实例化 语法解释器
     val parser = new SqlBaseParser(tokenStream)
     parser.addParseListener(PostProcessor)
     parser.removeErrorListeners()
@@ -113,6 +115,7 @@ abstract class AbstractSqlParser(conf: SQLConf) extends ParserInterface with Log
       try {
         // first, try parsing with potentially faster SLL mode
         parser.getInterpreter.setPredictionMode(PredictionMode.SLL)
+        // 调用第二个传参，是一个函数，将实例化的 parser作为入参
         toResult(parser)
       }
       catch {

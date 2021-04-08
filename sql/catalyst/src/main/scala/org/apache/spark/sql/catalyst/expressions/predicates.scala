@@ -238,10 +238,12 @@ case class InSubquery(values: Seq[Expression], query: ListQuery)
     })
   } else {
     values.head
-  }
+  } // 如果InSubquery的left value是多列的话,比如(a, b)这样的，变量value应该是一个  NamedStruct
+
 
 
   override def checkInputDataTypes(): TypeCheckResult = {
+    // 检查values和query的输出类型是否一致
     if (values.length != query.childOutputs.length) {
       TypeCheckResult.TypeCheckFailure(
         s"""
@@ -275,7 +277,7 @@ case class InSubquery(values: Seq[Expression], query: ListQuery)
       TypeUtils.checkForOrderingExpr(value.dataType, s"function $prettyName")
     }
   }
-
+  // 这里的children可就不是outer reference了
   override def children: Seq[Expression] = values :+ query
   override def nullable: Boolean = children.exists(_.nullable)
   override def foldable: Boolean = children.forall(_.foldable)

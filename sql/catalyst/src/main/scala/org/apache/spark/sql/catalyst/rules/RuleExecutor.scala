@@ -134,7 +134,7 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
         s"${this.getClass.getName.stripSuffix("$")}."
       throw new TreeNodeException(plan, message, null)
     }
-
+    // 遍历 analyzer类中定义的每一个 batch
     batches.foreach { batch =>
       val batchStartPlan = curPlan
       var iteration = 1
@@ -143,6 +143,7 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
 
       // Run until fix point (or the max number of iterations as specified in the strategy.
       while (continue) {
+        // 遍历每个batch下定义的 rule，应用于当前plan
         curPlan = batch.rules.foldLeft(curPlan) {
           case (plan, rule) =>
             val startTime = System.nanoTime()

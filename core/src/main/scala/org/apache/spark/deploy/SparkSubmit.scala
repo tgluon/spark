@@ -58,14 +58,45 @@ import org.apache.spark.launcher.SparkLauncher
 import org.apache.spark.util._
 
 /**
+ * 定义一个枚举类
  * Whether to submit, kill, or request the status of an application.
  * The latter two operations are currently supported only for standalone and Mesos cluster modes.
+ * 枚举使用案例
+ * object SparkSubmitAction extends Enumeration {
+ * type SparkSubmitAction = Value
+ * val SUBMIT, KILL, REQUEST_STATUS, PRINT_VERSION = Value
+ *
+ * def getAction(action: SparkSubmitAction){
+ * action match {
+ * case SUBMIT => println ("action is " + action)
+ * case KILL => println ("action is " + action)
+ * case REQUEST_STATUS => println ("action is " + action)
+ * case _ => println ("Unknown type")
+ * }
+ * }
+ * }
+ *
+ *
+ * object EnumerationTest {
+ * def main(args: Array[String]): Unit = {
+ * // 调用方式一
+ * val action = SparkSubmitAction.apply(1)
+ * SparkSubmitAction.getAction(action)
+ *
+ * // 调用方式二
+ * val action1 = SparkSubmitAction.withName("KILL")
+ * SparkSubmitAction.getAction(action1)
+ * }
+ * }
  */
+
 private[deploy] object SparkSubmitAction extends Enumeration {
+  // 声明枚举对外暴露的变量类型
   type SparkSubmitAction = Value
   // 继承了枚举类,定义了4个属性,多了一个打印spark版本
   val SUBMIT, KILL, REQUEST_STATUS, PRINT_VERSION = Value
 }
+
 
 /**
  * Main gateway of launching a Spark application.
@@ -83,7 +114,6 @@ private[spark] class SparkSubmit extends Logging {
     // be reset before the application starts.
     // 初始化logging系统,并跟日志判断是否需要在app启动时重启
     val uninitLog = initializeLogIfNecessary(true, silent = true)
-
     val appArgs = parseArguments(args)
     if (appArgs.verbose) {
       logInfo(appArgs.toString)
@@ -229,8 +259,8 @@ private[spark] class SparkSubmit extends Logging {
     // Return values
     val childArgs = new ArrayBuffer[String]()
     val childClasspath = new ArrayBuffer[String]() // 子类路径
-    val sparkConf = args.toSparkConf()  // 配置信息
-    var childMainClass = ""  // 应用类类路径
+    val sparkConf = args.toSparkConf() // 配置信息
+    var childMainClass = "" // 应用类类路径
 
     // Set the cluster manager
     // 判断集群模式
@@ -933,7 +963,7 @@ private[spark] class SparkSubmit extends Logging {
         }
         throw new SparkUserAppException(CLASS_NOT_FOUND_EXIT_STATUS)
     }
-// 获取SparkApplication实例
+    // 获取SparkApplication实例
     val app: SparkApplication = if (classOf[SparkApplication].isAssignableFrom(mainClass)) {
       mainClass.getConstructor().newInstance().asInstanceOf[SparkApplication]
     } else {

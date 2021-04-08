@@ -198,7 +198,7 @@ class Analyzer(
    * execute its rules in one pass.
    */
   val postHocResolutionRules: Seq[Rule[LogicalPlan]] = Nil
-
+  // 就是一个seq数组，内部由模板类Batch组成
   lazy val batches: Seq[Batch] = Seq(
     Batch("Substitution", fixedPoint,
       CTESubstitution,
