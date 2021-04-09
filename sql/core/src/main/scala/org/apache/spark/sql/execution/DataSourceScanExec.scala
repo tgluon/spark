@@ -552,7 +552,7 @@ case class FileSourceScanExec(
   /**
    * Create an RDD for non-bucketed reads.
    * The bucketed variant of this function is [[createBucketedReadRDD]].
-   *
+   * 基础表不为分桶表，读取数据的分区方式走此方法
    * @param readFile a function to read each (part of a) file.
    * @param selectedPartitions Hive-style partition that are part of the read.
    * @param fsRelation [[HadoopFsRelation]] associated with the read.
@@ -561,16 +561,20 @@ case class FileSourceScanExec(
       readFile: (PartitionedFile) => Iterator[InternalRow],
       selectedPartitions: Array[PartitionDirectory],
       fsRelation: HadoopFsRelation): RDD[InternalRow] = {
+    /** openCostInBytes 即为spark.sql.files.openCostInBytes 参数，默认为4M */
     val openCostInBytes = fsRelation.sparkSession.sessionState.conf.filesOpenCostInBytes
     val maxSplitBytes =
       FilePartition.maxSplitBytes(fsRelation.sparkSession, selectedPartitions)
     logInfo(s"Planning scan with bin packing, max size: $maxSplitBytes bytes, " +
       s"open cost is considered as scanning $openCostInBytes bytes.")
 
+    /** 遍历文件 */
     val splitFiles = selectedPartitions.flatMap { partition =>
       partition.files.flatMap { file =>
         // getPath() is very expensive so we only want to call it once in this block:
+        // 获取文件路径
         val filePath = file.getPath
+        /** 判断文件是否支持分割，parquet可分割 */
         val isSplitable = relation.fileFormat.isSplitable(
           relation.sparkSession, relation.options, filePath)
         PartitionedFileUtil.splitFiles(

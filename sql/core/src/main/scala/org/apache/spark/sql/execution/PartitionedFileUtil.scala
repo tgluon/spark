@@ -32,13 +32,16 @@ object PartitionedFileUtil {
       maxSplitBytes: Long,
       partitionValues: InternalRow): Seq[PartitionedFile] = {
     if (isSplitable) {
+      /**依据分片大小maxSplitBytes计算要多少分区来处理数据*/
       (0L until file.getLen by maxSplitBytes).map { offset =>
         val remaining = file.getLen - offset
+        /** 假如剩余量不足，那么该文件剩余的作为一个分区 */
         val size = if (remaining > maxSplitBytes) maxSplitBytes else remaining
         val hosts = getBlockHosts(getBlockLocations(file), offset, size)
         PartitionedFile(partitionValues, filePath.toUri.toString, offset, size, hosts)
       }
     } else {
+      /** 判断文件是否支持分割，如果不能分割，一个文件一个partition */
       Seq(getPartitionedFile(file, filePath, partitionValues))
     }
   }
