@@ -43,7 +43,7 @@ object QueryPlanningTracker {
 
   /**
    * Summary for a rule.
-   * @param totalTimeNs total amount of time, in nanosecs, spent in this rule.
+   * @param totalTimeNs total amount of time, in nanosecs, spent in this rule. 规则花费时间
    * @param numInvocations number of times the rule has been invoked.
    * @param numEffectiveInvocations number of times the rule has been invoked and
    *                                resulted in a plan change.
