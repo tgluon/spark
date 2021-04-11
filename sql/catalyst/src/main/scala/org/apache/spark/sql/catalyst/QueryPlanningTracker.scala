@@ -98,7 +98,7 @@ class QueryPlanningTracker {
   // Use a Java HashMap for less overhead.
   private val rulesMap = new java.util.HashMap[String, RuleSummary]
 
-  // From a phase to its start time and end time, in ms.
+  // From a phase to its start time and end time, in ms. 阶段
   private val phasesMap = new java.util.HashMap[String, PhaseSummary]
 
   /**
