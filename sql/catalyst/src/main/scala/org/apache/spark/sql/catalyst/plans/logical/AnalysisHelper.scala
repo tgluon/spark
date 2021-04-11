@@ -38,7 +38,8 @@ import org.apache.spark.util.Utils
  * To prevent accidental use of the transform methods, this trait also overrides the transform
  * methods to throw exceptions in test mode, if they are used in the analyzer.
  */
-trait AnalysisHelper extends QueryPlan[LogicalPlan] { self: LogicalPlan =>
+trait AnalysisHelper extends QueryPlan[LogicalPlan] {
+  self: LogicalPlan =>
 
   private var _analyzed: Boolean = false
 
@@ -78,19 +79,36 @@ trait AnalysisHelper extends QueryPlan[LogicalPlan] { self: LogicalPlan =>
    * children and then itself (post-order, bottom-up). When `rule` does not apply to a given node,
    * it is left unchanged.  This function is similar to `transformUp`, but skips sub-trees that
    * have already been marked as analyzed.
+   * 入参为rule，偏函数
+   * 偏函数(Partial Function)，是一个数学概念它不是"函数"的一种, 它跟函数是平行的概念。
+   * Scala中的Partia Function是一个Trait，其的类型为PartialFunction[A,B]，其中接收一个类型为A的参数，返回一个类型为B的结果。
+   * scala> val pf:PartialFunction[Int,String] = {
+   * |   case 1=>"One"
+   * |   case 2=>"Two"
+   * |   case 3=>"Three"
+   * |   case _=>"Other"
+   * | }
+   * pf: PartialFunction[Int,String] = <function1>
+   *
+   * scala> pf(1)
+   * res0: String = One
    *
    * @param rule the function use to transform this nodes children
    */
   def resolveOperatorsUp(rule: PartialFunction[LogicalPlan, LogicalPlan]): LogicalPlan = {
     if (!analyzed) {
       AnalysisHelper.allowInvokingTransformsInAnalyzer {
+        // 1、先遍历子节点，得到叶子节点
         val afterRuleOnChildren = mapChildren(_.resolveOperatorsUp(rule))
+        // 2、为节点执行规则
         if (self fastEquals afterRuleOnChildren) {
           CurrentOrigin.withOrigin(origin) {
+            // 如果遍历后当前节点没有发生变化，对当前的plan执行rule规则
             rule.applyOrElse(self, identity[LogicalPlan])
           }
         } else {
           CurrentOrigin.withOrigin(origin) {
+            // 如果遍历后 当前 节点发 生了变化，则新负值的afterRuleOnChildren执行rule规则
             rule.applyOrElse(afterRuleOnChildren, identity[LogicalPlan])
           }
         }
@@ -105,13 +123,17 @@ trait AnalysisHelper extends QueryPlan[LogicalPlan] { self: LogicalPlan =>
     if (!analyzed) {
       AnalysisHelper.allowInvokingTransformsInAnalyzer {
         val afterRule = CurrentOrigin.withOrigin(origin) {
+          // 1、为当前节点执行规则
           rule.applyOrElse(self, identity[LogicalPlan])
         }
 
         // Check if unchanged and then possibly return old copy to avoid gc churn.
+        //  2、对执行完规则后的新节点遍历迭代
         if (self fastEquals afterRule) {
+          // 如果执行完规则后的节点没有变化（即规则没有起到作用），则对节点遍历迭代
           mapChildren(_.resolveOperatorsDown(rule))
         } else {
+          // 如果执行完规则后的节点发生变化，则对新节点遍历迭代
           afterRule.mapChildren(_.resolveOperatorsDown(rule))
         }
       }
@@ -125,15 +147,15 @@ trait AnalysisHelper extends QueryPlan[LogicalPlan] { self: LogicalPlan =>
    * been analyzed.
    */
   def resolveExpressions(r: PartialFunction[Expression, Expression]): LogicalPlan = {
-    resolveOperators  {
+    resolveOperators {
       case p => p.transformExpressions(r)
     }
   }
 
   protected def assertNotAnalysisRule(): Unit = {
     if (Utils.isTesting &&
-        AnalysisHelper.inAnalyzer.get > 0 &&
-        AnalysisHelper.resolveOperatorDepth.get == 0) {
+      AnalysisHelper.inAnalyzer.get > 0 &&
+      AnalysisHelper.resolveOperatorDepth.get == 0) {
       throw new RuntimeException("This method should not be called in the analyzer")
     }
   }
@@ -142,6 +164,7 @@ trait AnalysisHelper extends QueryPlan[LogicalPlan] { self: LogicalPlan =>
    * In analyzer, use [[resolveOperatorsDown()]] instead. If this is used in the analyzer,
    * an exception will be thrown in test mode. It is however OK to call this function within
    * the scope of a [[resolveOperatorsDown()]] call.
+   *
    * @see [[TreeNode.transformDown()]].
    */
   override def transformDown(rule: PartialFunction[LogicalPlan, LogicalPlan]): LogicalPlan = {
@@ -151,6 +174,7 @@ trait AnalysisHelper extends QueryPlan[LogicalPlan] { self: LogicalPlan =>
 
   /**
    * Use [[resolveOperators()]] in the analyzer.
+   *
    * @see [[TreeNode.transformUp()]]
    */
   override def transformUp(rule: PartialFunction[LogicalPlan, LogicalPlan]): LogicalPlan = {
@@ -160,6 +184,7 @@ trait AnalysisHelper extends QueryPlan[LogicalPlan] { self: LogicalPlan =>
 
   /**
    * Use [[resolveExpressions()]] in the analyzer.
+   *
    * @see [[QueryPlan.transformAllExpressions()]]
    */
   override def transformAllExpressions(rule: PartialFunction[Expression, Expression]): this.type = {
