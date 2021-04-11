@@ -61,10 +61,12 @@ object SparkSQLExample {
     // $example on:create_df$
     val df = spark.read.json("examples/src/main/resources/people.json")
     df.createOrReplaceTempView("people")
-    spark.sql(
+ spark.sql(
       """
-        |select * from people
-        |""".stripMargin).show
+        |select name,age from people  where  age > 10
+        |""".stripMargin).explain(true)
+    //    person.queryExecution.debug.codegen()
+
     // df.queryExecution.debug.codegen()
     // Displays the content of the DataFrame to stdout
     //    df.show()

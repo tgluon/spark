@@ -45,8 +45,8 @@ import org.apache.spark.storage.StorageLevel
 private class MutableInt(var i: Int)
 
 case class Origin(
-  line: Option[Int] = None,
-  startPosition: Option[Int] = None)
+                   line: Option[Int] = None,
+                   startPosition: Option[Int] = None)
 
 /**
  * Provides a location for TreeNodes to ask about the context of their origin.  For example, which
@@ -58,6 +58,7 @@ object CurrentOrigin {
   }
 
   def get: Origin = value.get()
+
   def set(o: Origin): Unit = value.set(o)
 
   def reset(): Unit = value.set(Origin())
@@ -69,7 +70,9 @@ object CurrentOrigin {
 
   def withOrigin[A](o: Origin)(f: => A): A = {
     set(o)
-    val ret = try f finally { reset() }
+    val ret = try f finally {
+      reset()
+    }
     ret
   }
 }
@@ -78,8 +81,13 @@ object CurrentOrigin {
 case class TreeNodeTag[T](name: String)
 
 // scalastyle:off
+/**
+ * TreeNode 继承了 Product 接口,TreeNode 的子类实现了 Product 接口，所以支持访问构造方法的参数。TreeNode 的 mapProductIterator 方法，接收一个函数用来遍历当前节点的构造参数
+ *
+ * @tparam BaseType
+ */
 abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
-// scalastyle:on
+  // scalastyle:on
   self: BaseType =>
 
   val origin: Origin = CurrentOrigin.get
@@ -138,6 +146,7 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
   }
 
   private lazy val _hashCode: Int = productHash(this, scala.util.hashing.MurmurHash3.productSeed)
+
   override def hashCode(): Int = _hashCode
 
   /**
@@ -161,6 +170,7 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
 
   /**
    * Runs the given function on this node and then recursively on [[children]].
+   *
    * @param f the function to be applied to each node in the tree.
    */
   def foreach(f: BaseType => Unit): Unit = {
@@ -170,6 +180,7 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
 
   /**
    * Runs the given function recursively on [[children]] then on this node.
+   *
    * @param f the function to be applied to each node in the tree.
    */
   def foreachUp(f: BaseType => Unit): Unit = {
@@ -180,6 +191,7 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
   /**
    * Returns a Seq containing the result of applying the given function to each
    * node in this tree in a preorder traversal.
+   *
    * @param f the function to be applied.
    */
   def map[A](f: BaseType => A): Seq[A] = {
@@ -229,8 +241,14 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
 
   /**
    * Efficient alternative to `productIterator.map(f).toArray`.
+   * ClassTag使用：  https://dzone.com/articles/scala-classtag-a-simple-use-case
    */
   protected def mapProductIterator[B: ClassTag](f: Any => B): Array[B] = {
+    /**
+     *
+     * scala> val array = Array.ofDim[Double](5)
+     * array: Array[Double] = Array(0.0, 0.0, 0.0, 0.0, 0.0)
+     */
     val arr = Array.ofDim[B](productArity)
     var i = 0
     while (i < arr.length) {
@@ -249,6 +267,7 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
     var changed = false
     val remainingNewChildren = newChildren.toBuffer
     val remainingOldChildren = children.toBuffer
+
     def mapTreeNode(node: TreeNode[_]): TreeNode[_] = {
       val newChild = remainingNewChildren.remove(0)
       val oldChild = remainingOldChildren.remove(0)
@@ -259,6 +278,7 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
         newChild
       }
     }
+
     def mapChild(child: Any): Any = child match {
       case arg: TreeNode[_] if containsChild(arg) => mapTreeNode(arg)
       // CaseWhen Case or any tuple type
@@ -266,6 +286,7 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
       case nonChild: AnyRef => nonChild
       case null => null
     }
+
     val newArgs = mapProductIterator {
       case s: StructType => s // Don't convert struct types to some other type of Seq[StructField]
       // Handle Seq[TreeNode] in TreeNode parameters.
@@ -301,35 +322,52 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
   /**
    * Returns a copy of this node where `rule` has been recursively applied to it and all of its
    * children (pre-order). When `rule` does not apply to a given node it is left unchanged.
+   * 递归逻辑：
+   *
+   * 递归结束条件：如果是叶子节点，那么使用规则对该节点操作，并且返回操作后的节点。
+   * 递归继续条件：如果不是叶子节点，那么先使用该规则对该节点操作。对操作后的该节点，继续遍历其子节点，用子节点的返回结果，来构建成新的节点。
    *
    * @param rule the function used to transform this nodes children
    */
   def transformDown(rule: PartialFunction[BaseType, BaseType]): BaseType = {
+    // 对当前节点，调用rule函数。
     val afterRule = CurrentOrigin.withOrigin(origin) {
+      // 这里rule函数有可能会生成新的节点，新节点的子节点可能不一样
       rule.applyOrElse(this, identity[BaseType])
     }
 
     // Check if unchanged and then possibly return old copy to avoid gc churn.
+    // 再遍历子节点
     if (this fastEquals afterRule) {
+      // 如果当前节点没有变化，则继续遍历它的子节点
       mapChildren(_.transformDown(rule))
     } else {
       // If the transform function replaces this node with a new one, carry over the tags.
+      // 如果当前节点发生改变，需要对改变后的节点进行遍历
       afterRule.copyTagsFrom(this)
       afterRule.mapChildren(_.transformDown(rule))
     }
   }
 
   /**
+   * 后序遍历
    * Returns a copy of this node where `rule` has been recursively applied first to all of its
    * children and then itself (post-order). When `rule` does not apply to a given node, it is left
    * unchanged.
+   * 递归逻辑：
+   *
+   * 递归结束条件：如果是子节点，那么使用该规则执行该节点，并且返回执行规则后的节点
+   * 递归继续条件：如果有子节点，那么先根据遍历子节点的结果，生成新节点。最后在使用该规则执行新节点
    *
    * @param rule the function use to transform this nodes children
    */
   def transformUp(rule: PartialFunction[BaseType, BaseType]): BaseType = {
+    // 先遍历子节点，得到叶子节点
     val afterRuleOnChildren = mapChildren(_.transformUp(rule))
+    // 对节点执行规则
     val newNode = if (this fastEquals afterRuleOnChildren) {
       CurrentOrigin.withOrigin(origin) {
+        // 这里用到了PartialFunction的applyOrElse方法，用来避免undefined的情况发生。如果当前节点应用rule没有匹配的话，则返回默认的当前节点本身
         rule.applyOrElse(this, identity[BaseType])
       }
     } else {
@@ -343,24 +381,28 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
   }
 
   /**
+   * mapChildren 会依次调用函数对子节点操作，根据返回的结果生成一个新的节点
    * Returns a copy of this node where `f` has been applied to all the nodes in `children`.
    */
   def mapChildren(f: BaseType => BaseType): BaseType = {
+    // 如果不是叶子节点，那么会执行mapChildren(f, forceCopy = false)方法，遍历构造函数的参数。如果参数是子节点，那么递归遍历
     if (containsChild.nonEmpty) {
       mapChildren(f, forceCopy = false)
     } else {
+      // 如果是叶子节点，则返回自身节点
       this
     }
   }
 
   /**
    * Returns a copy of this node where `f` has been applied to all the nodes in `children`.
-   * @param f The transform function to be applied on applicable `TreeNode` elements.
+   *
+   * @param f         The transform function to be applied on applicable `TreeNode` elements.
    * @param forceCopy Whether to force making a copy of the nodes even if no child has been changed.
    */
   private def mapChildren(
-      f: BaseType => BaseType,
-      forceCopy: Boolean): BaseType = {
+                           f: BaseType => BaseType,
+                           forceCopy: Boolean): BaseType = {
     var changed = false
 
     def mapChild(child: Any): Any = child match {
@@ -372,7 +414,7 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
         } else {
           arg
         }
-      case tuple @ (arg1: TreeNode[_], arg2: TreeNode[_]) =>
+      case tuple@(arg1: TreeNode[_], arg2: TreeNode[_]) =>
         val newChild1 = if (containsChild(arg1)) {
           f(arg1.asInstanceOf[BaseType])
         } else {
@@ -394,9 +436,13 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
       case other => other
     }
 
+    // 调用了mapProductIterator方法，遍历构造函数的参数，返回新的构造参数
     val newArgs = mapProductIterator {
+      // 如果参数是TreeNode子类，并且是当前节点的子节点
       case arg: TreeNode[_] if containsChild(arg) =>
+        // 递归调用函数遍历 这里的f可能是 transformUp or transformDown
         val newChild = f(arg.asInstanceOf[BaseType])
+        // 如果子节点发生变化了，则更改changed标识
         if (forceCopy || !(newChild fastEquals arg)) {
           changed = true
           newChild
@@ -428,12 +474,14 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
       case nonChild: AnyRef => nonChild
       case null => null
     }
+    // 如果子节点发生变化，则利用新的构造参数，实例化新的节点
     if (forceCopy || changed) makeCopy(newArgs, forceCopy) else this
   }
 
   /**
    * Args to the constructor that should be copied, but not transformed.
    * These are appended to the transformed args automatically by makeCopy
+   *
    * @return
    */
   protected def otherCopyArgs: Seq[AnyRef] = Nil
@@ -442,6 +490,7 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
    * Creates a copy of this type of tree node after a transformation.
    * Must be overridden by child classes that have constructor arguments
    * that are not present in the productIterator.
+   *
    * @param newArgs the new product arguments.
    */
   def makeCopy(newArgs: Array[AnyRef]): BaseType = makeCopy(newArgs, allowEmptyArgs = false)
@@ -450,12 +499,13 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
    * Creates a copy of this type of tree node after a transformation.
    * Must be overridden by child classes that have constructor arguments
    * that are not present in the productIterator.
-   * @param newArgs the new product arguments.
+   *
+   * @param newArgs        the new product arguments.
    * @param allowEmptyArgs whether to allow argument list to be empty.
    */
   private def makeCopy(
-      newArgs: Array[AnyRef],
-      allowEmptyArgs: Boolean): BaseType = attachTree(this, "makeCopy") {
+                        newArgs: Array[AnyRef],
+                        allowEmptyArgs: Boolean): BaseType = attachTree(this, "makeCopy") {
     val allCtors = getClass.getConstructors
     if (newArgs.isEmpty && allCtors.isEmpty) {
       // This is a singleton object which doesn't have any constructor. Just return `this` as we
@@ -550,6 +600,7 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
 
   /**
    * ONE line description of this node.
+   *
    * @param maxFields Maximum number of fields that will be converted to strings.
    *                  Any elements beyond the limit will be dropped.
    */
@@ -557,6 +608,7 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
 
   /**
    * ONE line description of this node containing the node identifier.
+   *
    * @return
    */
   def simpleStringWithNodeId(): String
@@ -573,21 +625,21 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
   final def treeString: String = treeString(verbose = true)
 
   final def treeString(
-      verbose: Boolean,
-      addSuffix: Boolean = false,
-      maxFields: Int = SQLConf.get.maxToStringFields,
-      printOperatorId: Boolean = false): String = {
+                        verbose: Boolean,
+                        addSuffix: Boolean = false,
+                        maxFields: Int = SQLConf.get.maxToStringFields,
+                        printOperatorId: Boolean = false): String = {
     val concat = new PlanStringConcat()
     treeString(concat.append, verbose, addSuffix, maxFields, printOperatorId)
     concat.toString
   }
 
   def treeString(
-      append: String => Unit,
-      verbose: Boolean,
-      addSuffix: Boolean,
-      maxFields: Int,
-      printOperatorId: Boolean): Unit = {
+                  append: String => Unit,
+                  verbose: Boolean,
+                  addSuffix: Boolean,
+                  maxFields: Int,
+                  printOperatorId: Boolean): Unit = {
     generateTreeString(0, Nil, append, verbose, "", addSuffix, maxFields, printOperatorId)
   }
 
@@ -649,14 +701,14 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
    * Note that this traversal (numbering) order must be the same as [[getNodeNumbered]].
    */
   def generateTreeString(
-      depth: Int,
-      lastChildren: Seq[Boolean],
-      append: String => Unit,
-      verbose: Boolean,
-      prefix: String = "",
-      addSuffix: Boolean = false,
-      maxFields: Int,
-      printNodeId: Boolean): Unit = {
+                          depth: Int,
+                          lastChildren: Seq[Boolean],
+                          append: String => Unit,
+                          verbose: Boolean,
+                          prefix: String = "",
+                          addSuffix: Boolean = false,
+                          maxFields: Int,
+                          printNodeId: Boolean): Unit = {
 
     if (depth > 0) {
       lastChildren.init.foreach { isLast =>
