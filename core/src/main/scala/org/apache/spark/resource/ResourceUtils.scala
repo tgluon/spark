@@ -129,6 +129,9 @@ private[spark] case class ResourceAllocation(id: ResourceID, addresses: Seq[Stri
   }
 }
 
+/**
+ * 负责加载配置spark.driver的类
+ */
 private[spark] object ResourceUtils extends Logging {
   // config suffixes
   val DISCOVERY_SCRIPT = "discoveryScript"

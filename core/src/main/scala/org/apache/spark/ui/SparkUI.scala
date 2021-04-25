@@ -32,6 +32,7 @@ import org.apache.spark.ui.jobs.{JobsTab, StagesTab}
 import org.apache.spark.ui.storage.StorageTab
 
 /**
+ * 负责运行Spark WebUI的组件
  * Top level user interface for a Spark application.
  */
 private[spark] class SparkUI private (

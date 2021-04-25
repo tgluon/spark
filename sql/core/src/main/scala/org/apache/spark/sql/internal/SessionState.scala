@@ -37,6 +37,7 @@ import org.apache.spark.sql.util.{ExecutionListenerManager, QueryExecutionListen
 
 /**
  * A class that holds all session-specific state in a given [[SparkSession]].
+ * 负责存储所有SparkSession的状态。
  *
  * @param sharedState The state shared across sessions, e.g. global view manager, external catalog.
  * @param conf SQL-specific key-value configurations.

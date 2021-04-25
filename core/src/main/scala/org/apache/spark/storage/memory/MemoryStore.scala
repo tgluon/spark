@@ -75,6 +75,7 @@ private[storage] trait BlockEvictionHandler {
 }
 
 /**
+ * 负责操作在内存中的数据存储
  * Stores blocks in memory, either as Arrays of deserialized Java objects or as
  * serialized ByteBuffers.
  */

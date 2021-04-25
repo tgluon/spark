@@ -162,6 +162,9 @@ private[spark] class HostLocalDirManager(
  * retrieving blocks both locally and remotely into various stores (memory, disk, and off-heap).
  *
  * Note that [[initialize()]] must be called before the BlockManager is usable.
+ * Spark有自己的内存管理，这个就是Spark用于管理存储块的。当前BlockManager使用的是随机块副本策略。
+ * 并且注册了Block Manager在某个端口。我们看到BlockManager使用的就是前面的NettyBlockTransfer服务的57484端口。
+ * 而且，BlockManager能够使用的内存是4.1GB的内存。
  */
 private[spark] class BlockManager(
     val executorId: String,
