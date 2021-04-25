@@ -605,10 +605,17 @@ class SparkSession private(
    * @since 2.0.0
    */
   def sql(sqlText: String): DataFrame = withActive {
+    // 用于跟踪查询计划的执行，例如：查询计划要执行计划要执行哪些Rule、跟踪记录各个阶段执行的时间等。
     val tracker = new QueryPlanningTracker
+    // 调用measurePhase统计解析执行计划的时间。
+    // 这是一个高阶函数：def measurePhase[T](phase: String)(f: => T):
+    // 执行一个操作，并计算其执行的时间。
     val plan = tracker.measurePhase(QueryPlanningTracker.PARSING) {
+      // SessionState的SQL Parser负责解析SQL，并生成解析的执行计划
+      // 接口定义为：def parsePlan(sqlText: String): LogicalPlan
       sessionState.sqlParser.parsePlan(sqlText)
     }
+    // 生成物理执行计划并生成DataSet（就是DataFrame）
     Dataset.ofRows(self, plan, tracker)
   }
 

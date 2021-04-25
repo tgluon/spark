@@ -61,36 +61,37 @@ import org.apache.spark.sql.util.{ExecutionListenerManager, QueryExecutionListen
  */
 private[sql] class SessionState(
     sharedState: SharedState,
-    val conf: SQLConf,
+    val conf: SQLConf, // Spark SQL配置
     val experimentalMethods: ExperimentalMethods,
-    val functionRegistry: FunctionRegistry,
-    val udfRegistration: UDFRegistration,
-    catalogBuilder: () => SessionCatalog,
-    val sqlParser: ParserInterface,
-    analyzerBuilder: () => Analyzer,
-    optimizerBuilder: () => Optimizer,
+    val functionRegistry: FunctionRegistry, // 函数注册
+    val udfRegistration: UDFRegistration, // UDF注册
+    catalogBuilder: () => SessionCatalog, // 构建Catalog
+    val sqlParser: ParserInterface, // SQL解析器
+    analyzerBuilder: () => Analyzer, // 分析后的执行计划构建器
+    optimizerBuilder: () => Optimizer, // 优化后的执行计划构建器
     val planner: SparkPlanner,
-    val streamingQueryManagerBuilder: () => StreamingQueryManager,
-    val listenerManager: ExecutionListenerManager,
-    resourceLoaderBuilder: () => SessionResourceLoader,
-    createQueryExecution: LogicalPlan => QueryExecution,
+    val streamingQueryManagerBuilder: () => StreamingQueryManager, // Streaming查询管理构建器
+    val listenerManager: ExecutionListenerManager, // 监听器管理器
+    resourceLoaderBuilder: () => SessionResourceLoader, // 资源加载构建器
+    createQueryExecution: LogicalPlan => QueryExecution, // create语句执行器
     createClone: (SparkSession, SessionState) => SessionState,
-    val columnarRules: Seq[ColumnarRule],
-    val queryStagePrepRules: Seq[Rule[SparkPlan]]) {
+    val columnarRules: Seq[ColumnarRule], // 自定义规则实现，在执行计划中实现运算符实现
+    val queryStagePrepRules: Seq[Rule[SparkPlan]]) { // 查询阶段预处理规则
 
   // The following fields are lazy to avoid creating the Hive client when creating SessionState.
   lazy val catalog: SessionCatalog = catalogBuilder()
-
+ // 分析器
   lazy val analyzer: Analyzer = analyzerBuilder()
-
+ // 优化器
   lazy val optimizer: Optimizer = optimizerBuilder()
-
+ // 资源加载器
   lazy val resourceLoader: SessionResourceLoader = resourceLoaderBuilder()
 
   // The streamingQueryManager is lazy to avoid creating a StreamingQueryManager for each session
   // when connecting to ThriftServer.
+  // 流查询管理器
   lazy val streamingQueryManager: StreamingQueryManager = streamingQueryManagerBuilder()
-
+  // Catalog管理器
   def catalogManager: CatalogManager = analyzer.catalogManager
 
   def newHadoopConf(): Configuration = SessionState.newHadoopConf(

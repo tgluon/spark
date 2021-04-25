@@ -43,7 +43,7 @@ BUILD:
   - "*pom.xml"
   - "/bin/docker-image-tool.sh"
   - "/bin/find-spark-home*"
-  - "scalastyle-config.xml"
+  - "scalastyle-config.xml.bak"
 DOCS:
   - "docs/"
   - "/README.md"
