@@ -95,8 +95,10 @@ private[sql] object Dataset {
   /** A variant of ofRows that allows passing in a tracker so we can track query parsing time. */
   def ofRows(sparkSession: SparkSession, logicalPlan: LogicalPlan, tracker: QueryPlanningTracker)
     : DataFrame = sparkSession.withActive {
+    // QueryExecution是为Spark执行关系型查询的主要工作流，它包含了所有的执行计划。
     val qe = new QueryExecution(sparkSession, logicalPlan, tracker)
     qe.assertAnalyzed()
+    // 创建DataSet，获取解析后的逻辑执行计划对应的schema，这个schema其实就是DataSet要使用的schema。
     new Dataset[Row](qe, RowEncoder(qe.analyzed.schema))
   }
 }

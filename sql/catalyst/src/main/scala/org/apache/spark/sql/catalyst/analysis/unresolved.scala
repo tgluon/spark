@@ -51,11 +51,11 @@ case class UnresolvedRelation(
 
   /** Returns a `.` separated name for this relation. */
   def tableName: String = multipartIdentifier.quoted
-
+  // 表名
   override def name: String = tableName
-
+  // 要输出的属性
   override def output: Seq[Attribute] = Nil
-
+  // 是否被解析
   override lazy val resolved = false
 }
 
