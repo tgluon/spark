@@ -126,6 +126,8 @@ object AnalysisContext {
 /**
  * Provides a logical query plan analyzer, which translates [[UnresolvedAttribute]]s and
  * [[UnresolvedRelation]]s into fully typed objects using information in a [[SessionCatalog]].
+ * Analyzer其实就是一个RuleExecutor，专门针对每个LogicPlan执行的一个个的Rule，进行解析。后续马上我们就会看到一个个的Rule了。不同类型的语法树节点，都会有对应的Rule来进行解析。
+ * Analyzer需要使用Catalog管理器进行初始化
  */
 class Analyzer(
     override val catalogManager: CatalogManager,
@@ -150,7 +152,9 @@ class Analyzer(
   }
 
   def executeAndCheck(plan: LogicalPlan, tracker: QueryPlanningTracker): LogicalPlan = {
+    // 执行解析，此处是调用父类RuleExecutor对应的executeAndTrack方法
     AnalysisHelper.markInAnalyzer {
+      // 执行解析
       val analyzed = executeAndTrack(plan, tracker)
       try {
         checkAnalysis(analyzed)
@@ -200,19 +204,20 @@ class Analyzer(
   val postHocResolutionRules: Seq[Rule[LogicalPlan]] = Nil
 
   lazy val batches: Seq[Batch] = Seq(
+    // 替换策略组
     Batch("Substitution", fixedPoint,
       CTESubstitution,
       WindowsSubstitution,
       EliminateUnions,
       new SubstituteUnresolvedOrdinals(conf)),
-    Batch("Disable Hints", Once,
+    Batch("Disable Hints", Once,  // 禁用Hint策略组
       new ResolveHints.DisableHints(conf)),
-    Batch("Hints", fixedPoint,
+    Batch("Hints", fixedPoint,    // Hint策略组
       new ResolveHints.ResolveJoinStrategyHints(conf),
       new ResolveHints.ResolveCoalesceHints(conf)),
-    Batch("Simple Sanity Check", Once,
+    Batch("Simple Sanity Check", Once,    // 简单检查策略组
       LookupFunctions),
-    Batch("Resolution", fixedPoint,
+    Batch("Resolution", fixedPoint,    // 关系策略组
       ResolveTableValuedFunctions ::
       ResolveNamespace(catalogManager) ::
       new ResolveCatalogs(catalogManager) ::
@@ -252,19 +257,27 @@ class Analyzer(
       ResolveUnion ::
       TypeCoercion.typeCoercionRules(conf) ++
       extendedResolutionRules : _*),
+    // 可以执行的钩子策略组
     Batch("Post-Hoc Resolution", Once, postHocResolutionRules: _*),
+    // Alter Table策略组
     Batch("Normalize Alter Table", Once, ResolveAlterTableChanges),
+    // 移除未解析的Hint策略组
     Batch("Remove Unresolved Hints", Once,
       new ResolveHints.RemoveAllHints(conf)),
+    // 非确定策略组
     Batch("Nondeterministic", Once,
       PullOutNondeterministic),
+    // UDF策略组
     Batch("UDF", Once,
       HandleNullInputsForUDF,
       ResolveEncodersInUDF),
+    // 更新为null策略组
     Batch("UpdateNullability", Once,
       UpdateAttributeNullability),
+    // 子查询策略组
     Batch("Subquery", Once,
       UpdateOuterReferences),
+    // 清理策略组
     Batch("Cleanup", fixedPoint,
       CleanupAliases)
   )

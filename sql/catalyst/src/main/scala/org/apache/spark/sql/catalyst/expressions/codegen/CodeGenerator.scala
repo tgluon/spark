@@ -1263,6 +1263,7 @@ abstract class CodeGenerator[InType <: AnyRef, OutType <: AnyRef] extends Loggin
     generate(bind(expressions, inputSchema))
 
   /** Generates the requested evaluator given already bound expression(s). */
+/** generate方法就是直接根据表达式来生成可执行的Java代码的 */
   def generate(expressions: InType): OutType = create(canonicalize(expressions))
 
   /**

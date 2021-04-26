@@ -148,6 +148,11 @@ object GenerateSafeProjection extends CodeGenerator[Seq[Expression], Projection]
     case _ => ExprCode(FalseLiteral, input)
   }
 
+  /**
+   * 此处有Java代码的模板。Spark使用的是codehaus的janino直接生成Java字节码，并由CLASSLOADER动态加载。然后由SparkPlan中调用执行。所有的表达式直接将Java代码直接生成好，并在一个并行度中执行。
+   * @param expressions
+   * @return
+   */
   protected def create(expressions: Seq[Expression]): Projection = {
     val ctx = newCodeGenContext()
     val expressionCodes = expressions.zipWithIndex.map {

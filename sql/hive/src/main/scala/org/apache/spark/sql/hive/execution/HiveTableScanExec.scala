@@ -201,6 +201,7 @@ case class HiveTableScanExec(
   protected override def doExecute(): RDD[InternalRow] = {
     // Using dummyCallSite, as getCallSite can turn out to be expensive with
     // multiple partitions.
+    // 通过HadoopReader的markRDDForTable方法，创建RDD，然后执行了mapPartitionsWithIndexInternal算子。
     val rdd = if (!relation.isPartitioned) {
       Utils.withDummyCallSite(sqlContext.sparkContext) {
         hadoopReader.makeRDDForTable(hiveQlTable)
@@ -214,6 +215,7 @@ case class HiveTableScanExec(
     // Avoid to serialize MetastoreRelation because schema is lazy. (see SPARK-15649)
     val outputSchema = schema
     rdd.mapPartitionsWithIndexInternal { (index, iter) =>
+      // 调用自动生成的代码
       val proj = UnsafeProjection.create(outputSchema)
       proj.initialize(index)
       iter.map { r =>

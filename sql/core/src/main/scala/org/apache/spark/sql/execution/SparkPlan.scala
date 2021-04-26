@@ -54,6 +54,7 @@ object SparkPlan {
  * The base class for physical operators.
  *
  * The naming convention is that physical operators end with "Exec" suffix, e.g. [[ProjectExec]].
+ * 大多数的SparkPlan节点是以Exec结尾，这也表示了这些节点是Spark可执行的。SparkPlan中定义了doExecute方法，这是每种SparkPlan都需要自己实现的。
  */
 abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializable {
 

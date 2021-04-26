@@ -120,28 +120,35 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
   abstract class Strategy {
 
     /** The maximum number of executions. */
+    /** 最大执行次数. */
     def maxIterations: Int
 
     /** Whether to throw exception when exceeding the maximum number. */
+    /** 超过最大执行次数是否报错. */
     def errorOnExceed: Boolean = false
 
     /** The key of SQLConf setting to tune maxIterations */
+    /** 配置最大执行次数的配置key值 */
     def maxIterationsSetting: String = null
   }
 
   /** A strategy that is run once and idempotent. */
+  /** 有且仅执行一次. */
   case object Once extends Strategy { val maxIterations = 1 }
 
   /**
+   * 指定固定的执行次数.
    * A strategy that runs until fix point or maxIterations times, whichever comes first.
    * Especially, a FixedPoint(1) batch is supposed to run only once.
    */
+
   case class FixedPoint(
     override val maxIterations: Int,
     override val errorOnExceed: Boolean = false,
     override val maxIterationsSetting: String = null) extends Strategy
 
   /** A batch of rules. */
+  /**  这个Batch可以翻译过来称为逻辑计划执行策略组更容易理解一些。里面包含了针对每一类别LogicalPlan的处理类。每个Batch需要指定其名称、执行策略、以及规则。 **/
   protected case class Batch(name: String, strategy: Strategy, rules: Rule[TreeType]*)
 
   /** Defines a sequence of rule batches, to be overridden by the implementation. */
@@ -187,6 +194,7 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
   /**
    * Executes the batches of rules defined by the subclass. The batches are executed serially
    * using the defined execution strategy. Within each batch, rules are also executed serially.
+   * 串行执行子类定义的一些列规则。这些规则由指定的执行策略执行。
    */
   def execute(plan: TreeType): TreeType = {
     var curPlan = plan
@@ -195,13 +203,17 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
     val tracker: Option[QueryPlanningTracker] = QueryPlanningTracker.get
     val beforeMetrics = RuleExecutor.getCurrentMetrics()
 
+    // 对初始输入执行初始化检查，确保逻辑执行计划是完整的
+    // 每个逻辑执行计划都有自己的唯一ID，例如：name#0、cast(name#0 as string) AS name#3。
+    // 此处检查需要让逻辑执行计划具备有唯一的ID，且输出表达式ID是否也是唯一的
+    // 一旦检测出来有重复的，就会抛出解析失败的异常
     // Run the structural integrity checker against the initial input
     if (!isPlanIntegral(plan)) {
       val message = "The structural integrity of the input plan is broken in " +
         s"${this.getClass.getName.stripSuffix("$")}."
       throw new TreeNodeException(plan, message, null)
     }
-
+    // 挨个挨个执行Analyzer组件中定义的每一批解析策略。
     batches.foreach { batch =>
       val batchStartPlan = curPlan
       var iteration = 1
@@ -213,6 +225,7 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
         curPlan = batch.rules.foldLeft(curPlan) {
           case (plan, rule) =>
             val startTime = System.nanoTime()
+            // 对逻辑执行计划应用规则，应用规则成功后的逻辑执行计划就是解析后的逻辑执行计划
             val result = rule(plan)
             val runTime = System.nanoTime() - startTime
             val effective = !result.fastEquals(plan)

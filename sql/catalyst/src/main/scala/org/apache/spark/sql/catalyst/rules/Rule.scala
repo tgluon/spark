@@ -19,7 +19,7 @@ package org.apache.spark.sql.catalyst.rules
 
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.catalyst.trees.TreeNode
-
+/** Rule是一个抽象类，它的定义非常简单，只有一个规则名称、以及apply方法，也就是对逻辑执行计划应用规则。 **/
 abstract class Rule[TreeType <: TreeNode[_]] extends Logging {
 
   /** Name for this rule, automatically inferred based on class name. */
