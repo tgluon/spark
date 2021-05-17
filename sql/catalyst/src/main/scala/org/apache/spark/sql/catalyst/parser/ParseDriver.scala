@@ -92,11 +92,14 @@ abstract class AbstractSqlParser(conf: SQLConf) extends ParserInterface with Log
 
   protected def parse[T](command: String)(toResult: SqlBaseParser => T): T = {
     logDebug(s"Parsing command: $command")
-    // 创建词法分析器
+    // 对每一个输入的字符串，构造一个 CodePointCharStream 流, 并创建词法分析器,词法分析的作用是产生记号
     val lexer = new SqlBaseLexer(new UpperCaseCharStream(CharStreams.fromString(command)))
+    // 移除错误的监听
     lexer.removeErrorListeners()
+    // 添加监听
     lexer.addErrorListener(ParseErrorListener)
 
+    // 用词法分析器 lexer 构造一个记号流 tokens
     val tokenStream = new CommonTokenStream(lexer)
     // 创建此法解析器
     val parser = new SqlBaseParser(tokenStream)
