@@ -13,9 +13,10 @@
  *
  * This file is an adaptation of Presto's presto-parser/src/main/antlr4/com/facebook/presto/sql/parser/SqlBase.g4 grammar.
  */
-
+// 定义一个grammar 名称为SqlBase
+// 定义语法名称。需要注意的是文件名X.g4必须与grammar X相同。
 grammar SqlBase;
-
+// 定义一个actinName members,这个action是核心功能检查前token是是否合法的decimal
 @parser::members {
   /**
    * When false, INTERSECT is given the greater precedence over the other set
@@ -74,6 +75,33 @@ grammar SqlBase;
     }
   }
 }
+/**
+语法规则梳理：【查询，插入，创建，修改】
+查询语法规则：语法规则树重点梳理出来查询规则，并组合在一起，如下：
+query --> queryTerm queryOrganization --> queryTerm --> queryPrimary --> querySpecification --> transformClause
+
+插入语法规则：语法规则树重点梳理出来查询规则，并组合在一起
+dmlStatementNoWith-->insertInto-->queryTerm-->queryOrganization-->fromClause-->multiInsertQueryBody
+
+创建语法规则：语法规则树重点梳理出来查询规则，并组合在一起，如下：创建表在SqlBase.g4是：createtable同时还有创建hive表和使用like方式创建表语法规则，
+创建视图：eateHiveTalbe；createTableLike；createViewcreateTable-->CreateTableHeader-->colTypeList-->tableProvider-->options-->partitioning-->comment-->tableProsps-->?AS query
+
+
+修改语法规则：语法规则树比较简单单一有如下规则
+addTableColumns【新增列】;renameTableColumn【给列重命名】;dropTableColumns【删除列】；
+renameTable【表重命名】;setTableProperties【重设表属性】；unsetTableProperties【取消重设表属性】；
+alterTableColumn【修改表列】；changeColumn【换列】；setTableSerDe【设置表serdepropperties】；
+addTablePartition【新增分区】；renameTablePartition【重命名分区名】；dropTablePartitions【删除表分区】；
+setTableLocation【设置表存储目录】；setPartitionLocation【设置分区存储目录】；recoverPartitions【覆盖分区】；
+dropTable【删除表】；dropView【删除视图】；alterViewQuery【修改视图】；
+showTables【显示表列表】；showTable【显示表详细extended】；showColumns【显示列】；showPartitions【显示分区信息】；
+showFunctions【显示函数】；showcreateTable【显示表创建信息】；describeFunction【函数描述】；
+describeDatabase【数据库描述】；describeTable【表信息描述】；describeQuery【查询描述】；
+refreshTable【刷新表】；refreshResource【刷新资源】；cacheTable【缓存表】；uncacheTable【未缓存表】；
+clearCache【清理缓存】；loadData【load数据】；truncateTable【清理表】；repairTable【修理表】；
+manageResource【管理资源】；failNativeCommand【本地失败命令】；setConfiguration【设置配置】；
+restConfiguration【重设配置表】；
+*/
 
 singleStatement
     : statement ';'* EOF
