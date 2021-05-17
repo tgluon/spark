@@ -50,6 +50,8 @@ import org.apache.spark.util.random.RandomSampler
 /**
  * The AstBuilder converts an ANTLR4 ParseTree into a catalyst Expression, LogicalPlan or
  * TableIdentifier.
+ * AstBuilder主要是吧antlr解析树转换为sparksql解析树，具体转换为catalyst优化器种的expression,
+ * 逻辑计划或者TableIdentifier，同时该类集成了SqlBaseBaseVisitor 这个是访问者模式
  */
 class AstBuilder(conf: SQLConf) extends SqlBaseBaseVisitor[AnyRef] with Logging {
   import ParserUtils._
@@ -64,6 +66,8 @@ class AstBuilder(conf: SQLConf) extends SqlBaseBaseVisitor[AnyRef] with Logging 
    * Override the default behavior for all visit methods. This will only return a non-null result
    * when the context has only one child. This is done because there is no generic method to
    * combine the results of the context children. In all other cases null is returned.
+   * 这个方法是把RuleNode作为传入参数，该方法只返回非空结果
+   *  当节点种只有一个子节点，这是因为没用通用方法来组合上下文子级的结果，在所有其它情况下，返回空值
    */
   override def visitChildren(node: RuleNode): AnyRef = {
     if (node.getChildCount == 1) {
@@ -73,6 +77,10 @@ class AstBuilder(conf: SQLConf) extends SqlBaseBaseVisitor[AnyRef] with Logging 
     }
   }
 
+  /**
+   *
+   * @param ctx the parse tree
+   *  */
   override def visitSingleStatement(ctx: SingleStatementContext): LogicalPlan = withOrigin(ctx) {
     visit(ctx.statement).asInstanceOf[LogicalPlan]
   }
@@ -109,20 +117,22 @@ class AstBuilder(conf: SQLConf) extends SqlBaseBaseVisitor[AnyRef] with Logging 
   }
 
   /* ********************************************************************************************
-   * Plan parsing
+   * Plan parsing 根据解析树规则，返回一个LogicalPlan计划
    * ******************************************************************************************** */
   protected def plan(tree: ParserRuleContext): LogicalPlan = typedVisit(tree)
 
   /**
    * Create a top-level plan with Common Table Expressions.
+   * 使用通用的Table Expression 创建一个最高级别的计划
    */
   override def visitQuery(ctx: QueryContext): LogicalPlan = withOrigin(ctx) {
     val query = plan(ctx.queryTerm).optionalMap(ctx.queryOrganization)(withQueryResultClauses)
 
     // Apply CTEs
+    // optionalMap 是把一个逻辑计划转换成另外一个逻辑计划，如果之前节点存在就使用之前的方法，当节点不存在时候就返回一个原始计划，就是withCTE
     query.optionalMap(ctx.ctes)(withCTE)
   }
-
+// 以insert为主的解析树转换
   override def visitDmlStatement(ctx: DmlStatementContext): AnyRef = withOrigin(ctx) {
     val dmlStmt = plan(ctx.dmlStatementNoWith)
     // Apply CTEs
@@ -146,6 +156,10 @@ class AstBuilder(conf: SQLConf) extends SqlBaseBaseVisitor[AnyRef] with Logging 
 
   /**
    * Create a logical query plan for a hive-style FROM statement body.
+   * hive风格的查询，从statement语法规则种创建一个逻辑计划，传入FromStatement和LogicalPlan，返回一个新的LogicalPlan计划
+   * 方法体中，先获取判断FromStatement是否包含transformClause语法规则，如果有就走withTransformQuerySpecification分支
+   * 不包含 就走withSelectQuerySpecification分支，注意这两个分支的去别，可以对应到SqlBase.g4中的frimStatementBody
+   * 中连个语法规则分支
    */
   private def withFromStatementBody(
       ctx: FromStatementBodyContext, plan: LogicalPlan): LogicalPlan = withOrigin(ctx) {
@@ -172,6 +186,7 @@ class AstBuilder(conf: SQLConf) extends SqlBaseBaseVisitor[AnyRef] with Logging 
   }
 
   override def visitFromStatement(ctx: FromStatementContext): LogicalPlan = withOrigin(ctx) {
+    // 把一个from子句创建一个逻辑计划赋值给from
     val from = visitFromClause(ctx.fromClause)
     val selects = ctx.fromStatementBody.asScala.map { body =>
       withFromStatementBody(body, from).
@@ -179,6 +194,7 @@ class AstBuilder(conf: SQLConf) extends SqlBaseBaseVisitor[AnyRef] with Logging 
         optionalMap(body.queryOrganization)(withQueryResultClauses)
     }
     // If there are multiple SELECT just UNION them together into one query.
+    // 多条查询语句，使用union把多条连接
     if (selects.length == 1) {
       selects.head
     } else {
