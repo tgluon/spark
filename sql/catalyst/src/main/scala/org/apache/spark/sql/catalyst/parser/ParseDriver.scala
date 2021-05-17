@@ -79,6 +79,7 @@ abstract class AbstractSqlParser(conf: SQLConf) extends ParserInterface with Log
 
   /** Creates LogicalPlan for a given SQL string. */
   override def parsePlan(sqlText: String): LogicalPlan = parse(sqlText) { parser =>
+    // 从 singleStatement 结点开始，遍历语法树，将结点转换为逻辑计划，调用.g4文件生产的方法 singleStatement
     astBuilder.visitSingleStatement(parser.singleStatement()) match {
       case plan: LogicalPlan => plan
       case _ =>

@@ -120,10 +120,11 @@ object SparkSQLExample {
 //
     // $example on:run_sql$
     // Register the DataFrame as a SQL temporary view
+
     df.createOrReplaceTempView("people")
 
-    val sqlDF = spark.sql("SELECT name,age FROM people")
-    sqlDF.show()
+    val sqlDF = spark.sql("SELECT name,sum(age) as age FROM people group by name")
+println( sqlDF.count())
 //    // +----+-------+
 //    // | age|   name|
 //    // +----+-------+

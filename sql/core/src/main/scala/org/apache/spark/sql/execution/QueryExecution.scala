@@ -67,12 +67,13 @@ class QueryExecution(
       UnsupportedOperationChecker.checkForBatch(analyzed)
     }
   }
-
+  // 调用analyzer解析器,对Unresolved LogicalPlan进行元数据绑定生成的Resolved LogicalPlan
   lazy val analyzed: LogicalPlan = executePhase(QueryPlanningTracker.ANALYSIS) {
     // We can't clone `logical` here, which will reset the `_analyzed` flag.
     sparkSession.sessionState.analyzer.executeAndCheck(logical, tracker)
   }
 
+  // 如果缓存中有查询结果，则直接替换为缓存的结果
   lazy val withCachedData: LogicalPlan = sparkSession.withActive {
     assertAnalyzed()
     assertSupported()
@@ -80,7 +81,7 @@ class QueryExecution(
     // optimizing and planning.
     sparkSession.sharedState.cacheManager.useCachedData(analyzed.clone())
   }
-
+  // 调用optimizer优化器
   lazy val optimizedPlan: LogicalPlan = executePhase(QueryPlanningTracker.OPTIMIZATION) {
     // clone the plan to avoid sharing the plan instance between different stages like analyzing,
     // optimizing and planning.
@@ -88,7 +89,7 @@ class QueryExecution(
   }
 
   private def assertOptimized(): Unit = optimizedPlan
-
+  // 已经进行过优化的逻辑执行计划进行转换而得到的物理执行计划SparkPlan
   lazy val sparkPlan: SparkPlan = {
     // We need to materialize the optimizedPlan here because sparkPlan is also tracked under
     // the planning phase
@@ -114,6 +115,7 @@ class QueryExecution(
   }
 
   /**
+   * QueryExecution最后生成的RDD,触发了action操作后才会执行
    * Internal version of the RDD. Avoids copies and has no schema.
    * Note for callers: Spark may apply various optimization including reusing object: this means
    * the row is valid only for the iteration it is retrieved. You should avoid storing row and
