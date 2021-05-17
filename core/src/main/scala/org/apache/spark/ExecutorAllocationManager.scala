@@ -223,6 +223,7 @@ private[spark] class ExecutorAllocationManager(
   }
 
   /**
+   * 注册调度程序回调，以决定何时添加和删除执行程序，并启动调度任务。
    * Register for scheduler callbacks to decide when to add and remove executors, and start
    * the scheduling task.
    */
@@ -337,14 +338,18 @@ private[spark] class ExecutorAllocationManager(
    * This is factored out into its own method for testing.
    */
   private def schedule(): Unit = synchronized {
+    // 返回超时的执行器列表
     val executorIdsToBeRemoved = executorMonitor.timedOutExecutors()
-    if (executorIdsToBeRemoved.nonEmpty) {
+    if (executorIdsToBeRemoved.nonEmpty) { // 如果不为null
+      // 初始化为false
       initializing = false
     }
 
     // Update executor target number only after initializing flag is unset
+    // 更新目标executor数量，并与集群管理器同步结果
     updateAndSyncNumExecutorsTarget(clock.nanoTime())
     if (executorIdsToBeRemoved.nonEmpty) {
+      // 向集群管理器请求移除给定的executor,返回移除executor的列表
       removeExecutors(executorIdsToBeRemoved)
     }
   }
@@ -372,8 +377,9 @@ private[spark] class ExecutorAllocationManager(
 
       // Update targets for all ResourceProfiles then do a single request to the cluster manager
       numExecutorsTargetPerResourceProfileId.foreach { case (rpId, targetExecs) =>
+        // 最大需要
         val maxNeeded = maxNumExecutorsNeededPerResourceProfile(rpId)
-        if (maxNeeded < targetExecs) {
+        if (maxNeeded < targetExecs) { // 最大需executor数量小于目标executor数量
           // The target number exceeds the number we actually need, so stop adding new
           // executors and inform the cluster manager to cancel the extra pending requests
 
@@ -382,8 +388,10 @@ private[spark] class ExecutorAllocationManager(
           // the target number in case an executor just happens to get lost (eg., bad hardware,
           // or the cluster manager preempts it) -- in that case, there is no point in trying
           // to immediately  get a new executor, since we wouldn't even use it yet.
+          // 从目标递减executor数量
           decrementExecutorsFromTarget(maxNeeded, rpId, updatesNeeded)
         } else if (addTime != NOT_SET && now >= addTime) {
+          // 执行新增executor
           addExecutorsToTarget(maxNeeded, rpId, updatesNeeded)
         }
       }
