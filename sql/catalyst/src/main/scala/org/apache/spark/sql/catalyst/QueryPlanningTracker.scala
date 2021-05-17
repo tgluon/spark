@@ -96,27 +96,42 @@ class QueryPlanningTracker {
 
   // Mapping from the name of a rule to a rule's summary.
   // Use a Java HashMap for less overhead.
+  // key是规则名称，value是规则详细概要
   private val rulesMap = new java.util.HashMap[String, RuleSummary]
 
   // From a phase to its start time and end time, in ms.
   private val phasesMap = new java.util.HashMap[String, PhaseSummary]
 
   /**
+   * 柯里化(Currying)指的是将原来接受两个参数的函数变成新的接受一个参数的函数的过程。新的函数返回一个以原有第二个参数为参数的函数。
+   * 原始：
+   * def add(x:Int,y:Int)=x+y
+   * add(1,2)
+   * 柯里化
+   * def add(x:Int)(y:Int) = x + y
+   * add(1)(2)
    * Measure the start and end time of a phase. Note that if this function is called multiple
    * times for the same phase, the recorded start time will be the start time of the first call,
    * and the recorded end time will be the end time of the last call.
    */
   def measurePhase[T](phase: String)(f: => T): T = {
+    // 开始时间
     val startTime = System.currentTimeMillis()
+   // 调用第二个函数
     val ret = f
+    // 结束时间
     val endTime = System.currentTimeMillis
 
-    if (phasesMap.containsKey(phase)) {
+    if (phasesMap.containsKey(phase)) { // 判断是否包含这个阶段
+      // 如果包含,获取旧的阶段概要
       val oldSummary = phasesMap.get(phase)
+      // 将旧的概要写入阶段概要map种
       phasesMap.put(phase, new PhaseSummary(oldSummary.startTimeMs, endTime))
     } else {
+      // 不包含,直接往概要map种插入
       phasesMap.put(phase, new PhaseSummary(startTime, endTime))
     }
+    // 返回逻辑计划LogicalPlan
     ret
   }
 

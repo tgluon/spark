@@ -122,7 +122,7 @@ object SparkSQLExample {
     // Register the DataFrame as a SQL temporary view
     df.createOrReplaceTempView("people")
 
-    val sqlDF = spark.sql("SELECT * FROM people")
+    val sqlDF = spark.sql("SELECT name,age FROM people")
     sqlDF.show()
 //    // +----+-------+
 //    // | age|   name|
