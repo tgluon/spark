@@ -35,11 +35,11 @@ import org.apache.spark.util.BoundedPriorityQueue
  */
 object QueryPlanningTracker {
 
-  // Define a list of common phases here.
-  val PARSING = "parsing"
-  val ANALYSIS = "analysis"
-  val OPTIMIZATION = "optimization"
-  val PLANNING = "planning"
+  // Define a list of common phases here. 定义sql各个阶段
+  val PARSING = "parsing" // 解析
+  val ANALYSIS = "analysis" // 分析
+  val OPTIMIZATION = "optimization" // 优化
+  val PLANNING = "planning"  // plan
 
   /**
    * Summary for a rule.
@@ -62,7 +62,7 @@ object QueryPlanningTracker {
    * Summary of a phase, with start time and end time so we can construct a timeline.
    */
   class PhaseSummary(val startTimeMs: Long, val endTimeMs: Long) {
-
+    // 阶段概要所花费时间
     def durationMs: Long = endTimeMs - startTimeMs
 
     override def toString: String = {
@@ -137,14 +137,16 @@ class QueryPlanningTracker {
 
   /**
    * Record a specific invocation of a rule.
-   *
+   * 记录规则的特定调用
    * @param rule name of the rule
-   * @param timeNs time taken to run this invocation
-   * @param effective whether the invocation has resulted in a plan change
+   * @param timeNs time taken to run this invocation 运行该调用所花费的时间
+   * @param effective whether the invocation has resulted in a plan change 调用是否导致计划变更
    */
   def recordRuleInvocation(rule: String, timeNs: Long, effective: Boolean): Unit = {
+    // 从规则map中获取RuleSummary,
     var s = rulesMap.get(rule)
-    if (s eq null) {
+    if (s eq null) { // 如果规则概要为null
+      // 创建一个规则概要对象
       s = new RuleSummary
       rulesMap.put(rule, s)
     }
