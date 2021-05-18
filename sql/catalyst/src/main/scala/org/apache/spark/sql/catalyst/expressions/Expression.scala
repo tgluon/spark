@@ -130,6 +130,8 @@ abstract class Expression extends TreeNode[Expression] {
   /**
    * Returns an [[ExprCode]], that contains the Java source code to generate the result of
    * evaluating the expression on an input row.
+   * 返回一个多维数组[[ExprCode]]
+   * 这个多维数组包含java源码，该java源码依据输入的row产生对应的表达式
    *
    * @param ctx a [[CodegenContext]]
    * @return [[ExprCode]]
@@ -138,6 +140,7 @@ abstract class Expression extends TreeNode[Expression] {
     ctx.subExprEliminationExprs.get(this).map { subExprState =>
       // This expression is repeated which means that the code to evaluate it has already been added
       // as a function before. In that case, we just re-use it.
+      // 此表达式重复，这意味着用于计算它的代码以前作为函数添加，这种情况下，我们只是重复使用它
       ExprCode(ctx.registerComment(this.toString), subExprState.isNull, subExprState.value)
     }.getOrElse {
       val isNull = ctx.freshName("isNull")
@@ -190,7 +193,9 @@ abstract class Expression extends TreeNode[Expression] {
    * Returns Java source code that can be compiled to evaluate this expression.
    * The default behavior is to call the eval method of the expression. Concrete expression
    * implementations should override this to do actual code generation.
-   *
+   * 返回可以编译次变大时的java源代码
+   * 默认是调用表达式的eval入口方法
+   * 具体的表达式实现应该重写它来执行实际的代码生成
    * @param ctx a [[CodegenContext]]
    * @param ev an [[ExprCode]] with unique terms.
    * @return an [[ExprCode]] containing the Java source code to generate the given expression

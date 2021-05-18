@@ -46,7 +46,9 @@ import org.apache.spark.storage.StorageLevel
 private class MutableInt(var i: Int)
 
 case class Origin(
+   // 行号
   line: Option[Int] = None,
+   // 偏移量
   startPosition: Option[Int] = None)
 
 /**
