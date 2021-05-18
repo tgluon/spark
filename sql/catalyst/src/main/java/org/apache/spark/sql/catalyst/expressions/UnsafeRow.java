@@ -58,6 +58,7 @@ import static org.apache.spark.unsafe.Platform.BYTE_ARRAY_OFFSET;
  * (they are combined into a long).
  *
  * Instances of `UnsafeRow` act as pointers to row data stored in this format.
+ * 不采用 Java 对象存储的方式，避免了 JVM 中垃圾回收（ GC ）的代价。 此外，UnsafeRow 对行数据进行了特定的编码，使得存储更加高效 。 作为 Tungsten 计划的重要内容，相关实现在第 9 章中会涉及 。
  */
 public final class UnsafeRow extends InternalRow implements Externalizable, KryoSerializable {
 
