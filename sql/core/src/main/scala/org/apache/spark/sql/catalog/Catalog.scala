@@ -34,21 +34,21 @@ abstract class Catalog {
 
   /**
    * Returns the current default database in this session.
-   *
+   * 当前数据库
    * @since 2.0.0
    */
   def currentDatabase: String
 
   /**
    * Sets the current default database in this session.
-   *
+   * 设置当前数据库
    * @since 2.0.0
    */
   def setCurrentDatabase(dbName: String): Unit
 
   /**
    * Returns a list of databases available across all sessions.
-   *
+   * 所有数据库
    * @since 2.0.0
    */
   def listDatabases(): Dataset[Database]
@@ -56,7 +56,7 @@ abstract class Catalog {
   /**
    * Returns a list of tables/views in the current database.
    * This includes all temporary views.
-   *
+   * 所有表
    * @since 2.0.0
    */
   def listTables(): Dataset[Table]
@@ -73,7 +73,7 @@ abstract class Catalog {
   /**
    * Returns a list of functions registered in the current database.
    * This includes all temporary functions
-   *
+   * 所有函数
    * @since 2.0.0
    */
   def listFunctions(): Dataset[Function]
