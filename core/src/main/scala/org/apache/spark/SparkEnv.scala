@@ -325,11 +325,13 @@ object SparkEnv extends Logging {
 
     // Have to assign trackerEndpoint after initialization as MapOutputTrackerEndpoint
     // requires the MapOutputTracker itself
+    // 构造MapOutputTrackerMaster
     mapOutputTracker.trackerEndpoint = registerOrLookupEndpoint(MapOutputTracker.ENDPOINT_NAME,
       new MapOutputTrackerMasterEndpoint(
         rpcEnv, mapOutputTracker.asInstanceOf[MapOutputTrackerMaster], conf))
 
     // Let the user specify short names for shuffle managers
+    // 构建ShuffleManager
     val shortShuffleMgrNames = Map(
       "sort" -> classOf[org.apache.spark.shuffle.sort.SortShuffleManager].getName,
       "tungsten-sort" -> classOf[org.apache.spark.shuffle.sort.SortShuffleManager].getName)
@@ -337,7 +339,7 @@ object SparkEnv extends Logging {
     val shuffleMgrClass =
       shortShuffleMgrNames.getOrElse(shuffleMgrName.toLowerCase(Locale.ROOT), shuffleMgrName)
     val shuffleManager = instantiateClass[ShuffleManager](shuffleMgrClass)
-
+   // 构造内存管理
     val memoryManager: MemoryManager = UnifiedMemoryManager(conf, numUsableCores)
 
     val blockManagerPort = if (isDriver) {
@@ -356,6 +358,7 @@ object SparkEnv extends Logging {
 
     // Mapping from block manager id to the block manager's information.
     val blockManagerInfo = new concurrent.TrieMap[BlockManagerId, BlockManagerInfo]()
+    // 构造BlockManagerMaster
     val blockManagerMaster = new BlockManagerMaster(
       registerOrLookupEndpoint(
         BlockManagerMaster.DRIVER_ENDPOINT_NAME,
@@ -381,6 +384,7 @@ object SparkEnv extends Logging {
         blockManagerPort, numUsableCores, blockManagerMaster.driverEndpoint)
 
     // NB: blockManager is not valid until initialize() is called later.
+    // 构造blockManager
     val blockManager = new BlockManager(
       executorId,
       rpcEnv,

@@ -42,14 +42,17 @@ abstract class LogicalPlan
 
   /**
    * Returns the maximum number of rows that this plan may compute.
-   *
+   * 返回此计划可以计算的最大行数
    * Any operator that a Limit can be pushed passed should override this function (e.g., Union).
    * Any operator that can push through a Limit should override this function (e.g., Project).
+   * 任何可以推送限制的运算都应冲写此函数
+   * 任何可以通过限制的运算符都应重写此函数
    */
   def maxRows: Option[Long] = None
 
   /**
    * Returns the maximum number of rows this plan may compute on each partition.
+   * 返回此计划在每个分区上可以计算的最大行数
    */
   def maxRowsPerPartition: Option[Long] = maxRows
 
@@ -59,6 +62,7 @@ abstract class LogicalPlan
    * can override this (e.g.
    * [[org.apache.spark.sql.catalyst.analysis.UnresolvedRelation UnresolvedRelation]]
    * should return `false`).
+   * 如果此表达式及其所有子集都已经解析为特定架构，则返回true，如果它仍然包含任何未解析的占位符，则返回false
    */
   lazy val resolved: Boolean = expressions.forall(_.resolved) && childrenResolved
 
@@ -66,6 +70,7 @@ abstract class LogicalPlan
 
   /**
    * Returns true if all its children of this query plan have been resolved.
+   * 如果此查询计划的所有子级都已解决，则返回true。
    */
   def childrenResolved: Boolean = children.forall(_.resolved)
 

@@ -385,6 +385,7 @@ private[spark] object CoarseGrainedExecutorBackend extends Logging {
 
       // Bootstrap to fetch the driver's Spark properties.
       val executorConf = new SparkConf
+      // fetch获取Driver所需的spark属性信息和密钥
       val fetcher = RpcEnv.create(
         "driverPropsFetcher",
         arguments.bindAddress,
@@ -427,6 +428,7 @@ private[spark] object CoarseGrainedExecutorBackend extends Logging {
       }
 
       driverConf.set(EXECUTOR_ID, arguments.executorId)
+      // 创建executor自己的env，构造MapOutputTrackerMaster与ShuffleManager
       val env = SparkEnv.createExecutorEnv(driverConf, arguments.executorId, arguments.bindAddress,
         arguments.hostname, arguments.cores, cfg.ioEncryptionKey, isLocal = false)
 

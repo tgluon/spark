@@ -34,6 +34,7 @@ import org.apache.spark.sql.types.{DataType, StructType}
  *   QueryPlan -> Expression (subquery) -> QueryPlan
  * The tree traverse APIs like `transform`, `foreach`, `collect`, etc. that are
  * inherited from `TreeNode`, do not traverse into query plans inside subqueries.
+ * 上界：也就是PlanType应该是类型QueryPlan的子类
  */
 abstract class QueryPlan[PlanType <: QueryPlan[PlanType]] extends TreeNode[PlanType] {
   self: PlanType =>
