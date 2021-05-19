@@ -44,6 +44,9 @@ private[spark] trait WritablePartitionedPairCollection[K, V] {
    * Iterate through the data and write out the elements instead of returning them. Records are
    * returned in order of their partition ID and then the given comparator.
    * This may destroy the underlying collection.
+   * 这段代码分为两块，首先对数组进行压紧，是的稀疏的数据全部转移到数组的头部；
+   * 然后对数组按照比较器进行排序，比较器首先是按照分区进行比较，如果分区相同才按照key进行比较；
+   * 然后返回一个迭代器，这个迭代器仅仅是对数组的封装。通过这个方法，我们大概知道了AppendonlyMap的排序逻辑。
    */
   def destructiveSortedWritablePartitionedIterator(keyComparator: Option[Comparator[K]])
     : WritablePartitionedIterator = {

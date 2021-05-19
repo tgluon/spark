@@ -210,6 +210,10 @@ class ExternalAppendOnlyMap[K, V, C](
 
   /**
    * Spill the in-memory Iterator to a temporary file on disk.
+   * 首先通过DiskBlockManager获取一个临时块的BlockId和临时文件名
+   * 通过blockManager获取一个磁盘写入器，即DiskBlockObjectWriter对象，内部封装了调用java流api写文件的逻辑
+   * 循环将每条数据写入磁盘，并定期进行刷写（每隔一定的数据条数将内存中的数据刷写到磁盘上）
+   * 如果发生异常，则会对之前写入的文件进行回滚
    */
   private[this] def spillMemoryIteratorToDisk(inMemoryIterator: Iterator[(K, C)])
       : DiskMapIterator = {

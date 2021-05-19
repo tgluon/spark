@@ -139,6 +139,7 @@ private[spark] class SortShuffleManager(conf: SparkConf) extends ShuffleManager 
   }
 
   /** Get a writer for a given partition. Called on executors by map tasks. */
+    /** // 获取一个shuffle存储器，在executor端被调用，在执行一个map task调用 */
   override def getWriter[K, V](
       handle: ShuffleHandle,
       mapId: Long,

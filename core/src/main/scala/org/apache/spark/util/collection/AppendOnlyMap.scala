@@ -108,7 +108,7 @@ class AppendOnlyMap[K, V](initialCapacity: Int = 64)
       if (curKey.eq(null)) {
         data(2 * pos) = k
         data(2 * pos + 1) = value.asInstanceOf[AnyRef]
-        incrementSize()  // Since we added a new key
+        incrementSize() // Since we added a new key
         return
       } else if (k.eq(curKey) || k.equals(curKey)) {
         data(2 * pos + 1) = value.asInstanceOf[AnyRef]
@@ -124,33 +124,47 @@ class AppendOnlyMap[K, V](initialCapacity: Int = 64)
   /**
    * Set the value for key to updateFunc(hadValue, oldValue), where oldValue will be the old value
    * for key, if any, or null otherwise. Returns the newly updated value.
+   * 首先考虑空值的情况
+   * 计算key的hash,然后对容量取余。注意，这里由于容量是2的整数次幂，所以对容量取余的操作等同于和容量-1进行位与操作，java HashMap中的操作。
+   * 如果，不存在旧值，那么直接插入，
+   * 如果存在旧值，更新旧值
+   * 如果发生hash碰撞，那么需要向后探测，并且是跳跃性的探测，
+   *
+   * 可以看出，这个结构设计还是很精良的，这里面有个很重的方法，incrementSize方法中会判断当前数据量的大小，如果超过阈值就会扩容，
+   * 这个扩容的方法比较复杂，就是一个重新hash再分布的过程，不过有一点，发不论是在插入新数据还是重新hash再分布的过程中，对于hash碰撞的处理策略一定要相同，否则可能造成不一致。
+   *
    */
   def changeValue(key: K, updateFunc: (Boolean, V) => V): V = {
     assert(!destroyed, destructionMessage)
     val k = key.asInstanceOf[AnyRef]
+    // 处理key为空的情况
     if (k.eq(null)) {
       if (!haveNullValue) {
+        // 如果是第一次插入空值，那么需要将大小增加1
         incrementSize()
       }
       nullValue = updateFunc(haveNullValue, nullValue)
       haveNullValue = true
       return nullValue
     }
+    // 线性探测法处理hash碰撞,这里是一个加速的线性探测，即第一次碰撞时走1步， 第二次碰撞时走2步，第三次碰撞时走3步
     var pos = rehash(k.hashCode) & mask
     var i = 1
     while (true) {
       val curKey = data(2 * pos)
+      // 如果旧值不存在，直接插入
       if (curKey.eq(null)) {
         val newValue = updateFunc(false, null.asInstanceOf[V])
         data(2 * pos) = k
         data(2 * pos + 1) = newValue.asInstanceOf[AnyRef]
         incrementSize()
         return newValue
-      } else if (k.eq(curKey) || k.equals(curKey)) {
+      } else if (k.eq(curKey) || k.equals(curKey)) { // 如果旧值存在，需要更新
         val newValue = updateFunc(true, data(2 * pos + 1).asInstanceOf[V])
         data(2 * pos + 1) = newValue.asInstanceOf[AnyRef]
         return newValue
       } else {
+        // 发生hash碰撞，向后探测，跳跃性的探测
         val delta = i
         pos = (pos + delta) & mask
         i += 1
@@ -167,7 +181,7 @@ class AppendOnlyMap[K, V](initialCapacity: Int = 64)
 
       /** Get the next value we should return from next(), or null if we're finished iterating */
       def nextValue(): (K, V) = {
-        if (pos == -1) {    // Treat position -1 as looking at the null value
+        if (pos == -1) { // Treat position -1 as looking at the null value
           if (haveNullValue) {
             return (null.asInstanceOf[K], nullValue)
           }
@@ -256,10 +270,14 @@ class AppendOnlyMap[K, V](initialCapacity: Int = 64)
   /**
    * Return an iterator of the map in sorted order. This provides a way to sort the map without
    * using additional memory, at the expense of destroying the validity of the map.
+   * 这段代码分为两块，首先对数组进行压紧，是的稀疏的数据全部转移到数组的头部；
+   * 然后对数组按照比较器进行排序，比较器首先是按照分区进行比较，如果分区相同才按照key进行比较；
+   * 然后返回一个迭代器，这个迭代器仅仅是对数组的封装。通过这个方法，我们大概知道了AppendonlyMap的排序逻辑。
    */
   def destructiveSortedIterator(keyComparator: Comparator[K]): Iterator[(K, V)] = {
     destroyed = true
     // Pack KV pairs into the front of the underlying array
+    // 这段代码将稀疏的数据全部转移到数组头部，将数据压紧
     var keyIndex, newIndex = 0
     while (keyIndex < capacity) {
       if (data(2 * keyIndex) != null) {
@@ -270,13 +288,15 @@ class AppendOnlyMap[K, V](initialCapacity: Int = 64)
       keyIndex += 1
     }
     assert(curSize == newIndex + (if (haveNullValue) 1 else 0))
-
+    // 根据比较器对数据进行排序
     new Sorter(new KVArraySortDataFormat[K, AnyRef]).sort(data, 0, newIndex, keyComparator)
 
     new Iterator[(K, V)] {
       var i = 0
       var nullValueReady = haveNullValue
+
       def hasNext: Boolean = (i < newIndex || nullValueReady)
+
       def next(): (K, V) = {
         if (nullValueReady) {
           nullValueReady = false
