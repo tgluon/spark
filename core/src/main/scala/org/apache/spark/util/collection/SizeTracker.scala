@@ -70,6 +70,8 @@ private[spark] trait SizeTracker {
    * Callback to be invoked after every update.
    */
   protected def afterUpdate(): Unit = {
+    // 若numUpdates到达阈值，
+    // 则进行采样
     numUpdates += 1
     if (nextSampleNum == numUpdates) {
       takeSample()
@@ -82,16 +84,21 @@ private[spark] trait SizeTracker {
   private def takeSample(): Unit = {
     samples.enqueue(Sample(SizeEstimator.estimate(this), numUpdates))
     // Only use the last two samples to extrapolate
+    // 只用两个采样
     if (samples.size > 2) {
       samples.dequeue()
     }
     val bytesDelta = samples.toList.reverse match {
+      // 估计出每次更新的变化量
       case latest :: previous :: tail =>
         (latest.size - previous.size).toDouble / (latest.numUpdates - previous.numUpdates)
       // If fewer than 2 samples, assume no change
+      // 若小于 2个 样本, 假设没产生变化
       case _ => 0
     }
+    // 更新
     bytesPerUpdate = math.max(0, bytesDelta)
+    // 增大阈值
     nextSampleNum = math.ceil(numUpdates * SAMPLE_GROWTH_RATE).toLong
   }
 
@@ -100,8 +107,9 @@ private[spark] trait SizeTracker {
    */
   def estimateSize(): Long = {
     assert(samples.nonEmpty)
-    // 每次更新字节 * (更新总次数 - 最后更新总次数 )
+    // 计算估计的总变化量
     val extrapolatedDelta = bytesPerUpdate * (numUpdates - samples.last.numUpdates)
+    // 之前的大小 加上 估计的总变化量
     (samples.last.size + extrapolatedDelta).toLong
   }
 }

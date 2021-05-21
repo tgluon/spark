@@ -49,9 +49,9 @@ private[spark] class ShuffleWriteProcessor extends Serializable with Logging {
              partition: Partition): MapStatus = {
     var writer: ShuffleWriter[Any, Any] = null
     try {
-      // shuffle管理器
+      // 获取 shuffleManager
       val manager = SparkEnv.get.shuffleManager
-      // 获取一个shuffle写入器
+      // 获取 writer
       writer = manager.getWriter[Any, Any](
         dep.shuffleHandle,
         mapId,
@@ -70,7 +70,7 @@ private[spark] class ShuffleWriteProcessor extends Serializable with Logging {
        */
       writer.write(
         rdd.iterator(partition, context).asInstanceOf[Iterator[_ <: Product2[Any, Any]]])
-      // 主要是删除中间过程的溢写文件，向内存管理器释放申请的内存
+      // 停止计算，并返回结果
       writer.stop(success = true).get
     } catch {
       case e: Exception =>

@@ -84,25 +84,30 @@ private[spark] abstract class Spillable[C](taskMemoryManager: TaskMemoryManager)
     // 每写入32条数据检查一次
     if (elementsRead % 32 == 0 && currentMemory >= myMemoryThreshold) {
       // Claim up to double our current memory from the shuffle memory pool
+      // 若大于阈值, amountToRequest 为要申请的内存空间
       val amountToRequest = 2 * currentMemory - myMemoryThreshold
       // 向内存管理器申请执行内存
       val granted = acquireMemory(amountToRequest)
       myMemoryThreshold += granted
       // If we were granted too little memory to grow further (either tryToAcquire returned 0,
       // or we already had more memory than myMemoryThreshold), spill the current collection
-      // 如果内存占用超过了阈值，那么就需要溢写
+      // 若果我们分配了太小的内存， 由于 tryToAcquire 返回0 或者 内存申请大小超过了myMemoryThreshold 导致 依然 currentMemory >= myMemoryThreshold 则 shouldSpill
       shouldSpill = currentMemory >= myMemoryThreshold
     }
+    // 若元素读取数大于阈值, 则 shouldSpill
     shouldSpill = shouldSpill || _elementsRead > numElementsForceSpillThreshold
     // Actually spill
     if (shouldSpill) {
+      // 跟新 Spill 次数
       _spillCount += 1
+      // Spill操作
       logSpillage(currentMemory)
       // 溢写到磁盘
       spill(collection)
+      // 元素读取数 清零
       _elementsRead = 0
       _memoryBytesSpilled += currentMemory
-      // 释放内存
+      // 增加Spill的内存计数,释放内存
       releaseMemory()
     }
     shouldSpill

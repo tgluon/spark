@@ -185,30 +185,53 @@ private[spark] class ExternalSorter[K, V, C](
 
   def insertAll(records: Iterator[Product2[K, V]]): Unit = {
     // TODO: stop combining if we find that the reduction factor isn't high
+    /**
+     * 我们先来宏观的了解下Map端，我们会根据aggregator.isDefined是否定义了聚合函数和ordering.isDefined是否定义了排序函数分为三种：
+     * 没有聚合和排序
+     * 数据先按照partition写入不同的文件中，最后按partition顺序合并写入同一文件 。适合partition数量较少时。将多个bucket合并到同一文件，减少map输出文件数，节省磁盘I/O，提高性能。
+     *
+     * 没有聚合但有排序
+     * 在缓存对数据先根据分区（或者还有key）进行排序，最后按partition顺序合并写入同一文件。适合当partition数量较多时。将多个bucket合并到同一文件，减少map输出文件数，节省磁盘I/O，提高性能。缓存使用超过阈值，将数据写入磁盘。
+     *
+     * 有聚合有排序
+     * 现在缓存中根据key值聚合，再在缓存对数据先根据分区（或者还有key）进行排序，最后按partition顺序合并写入同一文件。将多个bucket合并到同一文件，减少map输出文件数，节省磁盘I/O，提高性能。
+     * 缓存使用超过阈值，将数据写入磁盘。逐条的读取数据，并进行聚合，减少了内存的占用。
+     */
+
+    // 若定义了聚合函数，则shouldCombine为true
     val shouldCombine = aggregator.isDefined
-    // 在map端进行合并的情况
+    // 外部排序是否需要聚合
     if (shouldCombine) {
       // Combine values in-memory first using our AppendOnlyMap
+      // mergeValue 是 对 Value 进行 merge的函数
       val mergeValue = aggregator.get.mergeValue
+      // createCombiner 为生成 Combiner 的 函数
       val createCombiner = aggregator.get.createCombiner
       var kv: Product2[K, V] = null
+      // update 为偏函数
       val update = (hadValue: Boolean, oldValue: C) => {
+        // 当有Value时，将oldValue与新的Value kv._2 进行merge
+        // 若没有Value，传入kv._2，生成Value
         if (hadValue) mergeValue(oldValue, kv._2) else createCombiner(kv._2)
       }
       while (records.hasNext) {
         addElementsRead()
         kv = records.next()
-        // 向内存缓冲中插入一条数据
+        // 首先使用我们的AppendOnlyMap
+        // 在内存中对value进行聚合
         map.changeValue((getPartition(kv._1), kv._1), update)
+        // 溢出
         // 如果缓冲超过阈值，就会溢写到磁盘生成一个文件，每入一条数据就检查一遍内存
         maybeSpillCollection(usingMap = true)
       }
     } else {
-      // 不再map端合并的情况
       // Stick values into our buffer
+      // 不在map端合并的情况
+      // 直接把Value插入缓冲区
       while (records.hasNext) {
         addElementsRead()
         val kv = records.next()
+        // 写缓冲区
         buffer.insert(getPartition(kv._1), kv._1, kv._2.asInstanceOf[C])
         maybeSpillCollection(usingMap = false)
       }
@@ -252,9 +275,9 @@ private[spark] class ExternalSorter[K, V, C](
    * @param collection whichever collection we're using (map or buffer)
    */
   override protected[this] def spill(collection: WritablePartitionedPairCollection[K, C]): Unit = {
-    // 获取一个排序后的迭代器
+    // 生成内存中集合的迭代器
     val inMemoryIterator = collection.destructiveSortedWritablePartitionedIterator(comparator)
-    // 将数据写入磁盘文件中
+    // 生成spill文件，并将其加入数组
     val spillFile = spillMemoryIteratorToDisk(inMemoryIterator)
     spills += spillFile
   }
@@ -285,22 +308,27 @@ private[spark] class ExternalSorter[K, V, C](
     // Because these files may be read during shuffle, their compression must be controlled by
     // spark.shuffle.compress instead of spark.shuffle.spill.compress, so we need to use
     // createTempShuffleBlock here; see SPARK-3426 for more context.
+    // 生成临时文件 及 blockId
     val (blockId, file) = diskBlockManager.createTempShuffleBlock()
 
     // These variables are reset after each flush
+    // 这些值在每次flush后会被重置
     var objectsWritten: Long = 0
     val spillMetrics: ShuffleWriteMetrics = new ShuffleWriteMetrics
     val writer: DiskBlockObjectWriter =
       blockManager.getDiskWriter(blockId, file, serInstance, fileBufferSize, spillMetrics)
 
     // List of batch sizes (bytes) in the order they are written to disk
+    // 按写入磁盘的顺序记录分支的大小
     val batchSizes = new ArrayBuffer[Long]
 
     // How many elements we have in each partition
+    // 记录每个分区有多少元素
     val elementsPerPartition = new Array[Long](numPartitions)
 
     // Flush the disk writer's contents to disk, and update relevant variables.
     // The writer is committed at the end of this process.
+    // Flush  writer 内容到磁盘，并更新相关变量
     def flush(): Unit = {
       val segment = writer.commitAndGet()
       batchSizes += segment.length
@@ -310,6 +338,7 @@ private[spark] class ExternalSorter[K, V, C](
 
     var success = false
     try {
+      // 遍历内存集合
       while (inMemoryIterator.hasNext) {
         val partitionId = inMemoryIterator.nextPartition()
         require(partitionId >= 0 && partitionId < numPartitions,
@@ -317,12 +346,13 @@ private[spark] class ExternalSorter[K, V, C](
         inMemoryIterator.writeNext(writer)
         elementsPerPartition(partitionId) += 1
         objectsWritten += 1
-
+        // 当写入的元素个数 到达 批量序列化尺寸， flush
         if (objectsWritten == serializerBatchSize) {
           flush()
         }
       }
       if (objectsWritten > 0) {
+        // 遍历结束后还有写入 flush
         flush()
       } else {
         writer.revertPartialWritesAndClose()

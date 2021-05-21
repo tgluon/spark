@@ -148,23 +148,29 @@ class AppendOnlyMap[K, V](initialCapacity: Int = 64)
       return nullValue
     }
     // 线性探测法处理hash碰撞,这里是一个加速的线性探测，即第一次碰撞时走1步， 第二次碰撞时走2步，第三次碰撞时走3步
+    // 根据k的hashCode在哈希 与 上 掩码 得到 pos 2*pos 为 k 应该所在的位置  2*pos + 1 为 k 对应的 v 所在的位置
     var pos = rehash(k.hashCode) & mask
     var i = 1
     while (true) {
+      // 得到data中k所在的位置上的值curKey
       val curKey = data(2 * pos)
       // 如果旧值不存在，直接插入
       if (curKey.eq(null)) {
+        // 若curKey为空, 得到根据 kv._2，即单个新值 生成的 newValue
         val newValue = updateFunc(false, null.asInstanceOf[V])
         data(2 * pos) = k
         data(2 * pos + 1) = newValue.asInstanceOf[AnyRef]
+        // 扩充容量
         incrementSize()
         return newValue
       } else if (k.eq(curKey) || k.equals(curKey)) { // 如果旧值存在，需要更新
+        // 若k 与 curKey 相等, 将oldValue（data(2 * pos + 1)） 和 新的Value（kv._2） 进行聚合
         val newValue = updateFunc(true, data(2 * pos + 1).asInstanceOf[V])
         data(2 * pos + 1) = newValue.asInstanceOf[AnyRef]
         return newValue
       } else {
         // 发生hash碰撞，向后探测，跳跃性的探测
+        // 若curKey 不为null，也和k不想等， 即hash冲突, 则不断的向后遍历 直到出现前两种情况
         val delta = i
         pos = (pos + delta) & mask
         i += 1
@@ -213,6 +219,8 @@ class AppendOnlyMap[K, V](initialCapacity: Int = 64)
 
   /** Increase table size by 1, rehashing if necessary */
   private def incrementSize(): Unit = {
+    // 当curSize大于阈值growThreshold时，
+    // 调用growTable()
     curSize += 1
     if (curSize > growThreshold) {
       growTable()
@@ -227,14 +235,18 @@ class AppendOnlyMap[K, V](initialCapacity: Int = 64)
   /** Double the table's size and re-hash everything */
   protected def growTable(): Unit = {
     // capacity < MAXIMUM_CAPACITY (2 ^ 29) so capacity * 2 won't overflow
+    //  生成容量翻倍的newData
     val newCapacity = capacity * 2
     require(newCapacity <= MAXIMUM_CAPACITY, s"Can't contain more than ${growThreshold} elements")
     val newData = new Array[AnyRef](2 * newCapacity)
+    // 生成newMask
     val newMask = newCapacity - 1
     // Insert all our old values into the new array. Note that because our old keys are
     // unique, there's no need to check for equality here when we insert.
     var oldPos = 0
     while (oldPos < capacity) {
+      // 将旧的Data 中的数据用newMask重新计算位置，
+      // 复制到新的Data 中
       if (!data(2 * oldPos).eq(null)) {
         val key = data(2 * oldPos)
         val value = data(2 * oldPos + 1)
@@ -256,6 +268,7 @@ class AppendOnlyMap[K, V](initialCapacity: Int = 64)
       }
       oldPos += 1
     }
+    // 更新
     data = newData
     capacity = newCapacity
     mask = newMask

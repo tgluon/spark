@@ -45,6 +45,7 @@ private[spark] class PartitionedPairBuffer[K, V](initialCapacity: Int = 64)
 
   /** Add an element into the buffer */
   def insert(partition: Int, key: K, value: V): Unit = {
+    // 到了容量大小，调用growArray()
     if (curSize == capacity) {
       growArray()
     }
@@ -65,7 +66,9 @@ private[spark] class PartitionedPairBuffer[K, V](initialCapacity: Int = 64)
       } else {
         capacity * 2
       }
+    // 生成翻倍容量的newArray
     val newArray = new Array[AnyRef](2 * newCapacity)
+    // 复制
     System.arraycopy(data, 0, newArray, 0, 2 * capacity)
     data = newArray
     capacity = newCapacity

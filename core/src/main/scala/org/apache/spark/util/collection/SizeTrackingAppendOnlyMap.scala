@@ -29,8 +29,11 @@ private[spark] class SizeTrackingAppendOnlyMap[K, V]
   }
 
   override def changeValue(key: K, updateFunc: (Boolean, V) => V): V = {
+    // 应用聚合算法得到newValue
     val newValue = super.changeValue(key, updateFunc)
+    // 更新对 AppendOnlyMap 大小的采样
     super.afterUpdate()
+    // 返回结果
     newValue
   }
 

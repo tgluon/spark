@@ -84,6 +84,7 @@ private[spark] class SortShuffleManager(conf: SparkConf) extends ShuffleManager 
 
   /**
    * A mapping from shuffle ids to the task ids of mappers producing output for those shuffles.
+   * shuffle ID 和task ID 的映射
    */
   private[this] val taskIdMapsForShuffle = new ConcurrentHashMap[Int, OpenHashSet[Long]]()
 

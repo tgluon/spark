@@ -59,7 +59,7 @@ private[spark] class SortShuffleWriter[K, V, C](
       new ExternalSorter[K, V, V](
         context, aggregator = None, Some(dep.partitioner), ordering = None, dep.serializer)
     }
-    // 将map数据全部写入排序器中， 这个过程中可能会生成多个溢写文件
+    // 根据排序方式，对数据进行排序并写入内存缓冲区。 若排序中计算结果超出的阈值， 则将其溢写到磁盘数据文件
     sorter.insertAll(records)
 
     // Don't bother including the time to open the merged output file in the shuffle write time,
@@ -68,6 +68,7 @@ private[spark] class SortShuffleWriter[K, V, C](
     // 将map端缓存的数据写入到磁盘种，并生产Block文件对应的索引文件
     val mapOutputWriter = shuffleExecutorComponents.createMapOutputWriter(
       dep.shuffleId, mapId, dep.partitioner.numPartitions)
+
     sorter.writePartitionedMapOutput(dep.shuffleId, mapId, mapOutputWriter)
     val partitionLengths = mapOutputWriter.commitAllPartitions().getPartitionLengths
     mapStatus = MapStatus(blockManager.shuffleServerId, partitionLengths, mapId)
