@@ -217,7 +217,7 @@ private[spark] class ExternalSorter[K, V, C](
 
   /**
    * Spill the current in-memory collection to disk if needed.
-   * 我们回到ExternalSorter的插入方法中，没插入一条数据都要检查内存占用，判断是否需要溢写到磁盘，如果需要就溢写到磁盘。
+   * 我们回到ExternalSorter的插入方法中，每插入一条数据都要检查内存占用，判断是否需要溢写到磁盘，如果需要就溢写到磁盘。
    * 这个方法里调用了map.estimateSize来估算当前插入的数据的内存占用大小，对于内存占用的追踪和估算的功能是在SizeTracker特质中实现的，
    * 这个特质我在之前分析MemoryStore时提到过，在将对象类型的数据插入内存中时使用了一个中间态的数据结构DeserializedValuesHolder,
    * 它的内部有一个SizeTrackingVector，这个类就是通过继承SizeTracker特征从而实现对象大小的追踪和估算。
@@ -226,8 +226,9 @@ private[spark] class ExternalSorter[K, V, C](
    */
   private def maybeSpillCollection(usingMap: Boolean): Unit = {
     var estimatedSize = 0L
-    // 每放一条记录就会检查一次PartitionedAppendOnlyMap是否需要spill。
+    // 每放一条记录就会检查一次PartitionedAppendOnlyMap是否需要spill
     if (usingMap) {
+      // 获取当前内存大小
       estimatedSize = map.estimateSize()
       if (maybeSpill(map, estimatedSize)) {
         map = new PartitionedAppendOnlyMap[K, C]

@@ -33,19 +33,24 @@ private[spark] trait SizeTracker {
   /**
    * Controls the base of the exponential which governs the rate of sampling.
    * E.g., a value of 2 would mean we sample at 1, 2, 4, 8, ... elements.
+   *  采样增长的速率。例如：速率为2时，分别对在1,2,4,8...位置上的元素进行采样。
    */
   private val SAMPLE_GROWTH_RATE = 1.1
 
   /** Samples taken since last resetSamples(). Only the last two are kept for extrapolation. */
+  /** 样本队列，最后两个样本将被用于估算 */
   private val samples = new mutable.Queue[Sample]
 
   /** The average number of bytes per update between our last two samples. */
+  /** 平均每次更新的字节数 */
   private var bytesPerUpdate: Double = _
 
   /** Total number of insertions and updates into the map since the last resetSamples(). */
+  /** 更新操作（包括插入和更新）的总次数 */
   private var numUpdates: Long = _
 
   /** The value of 'numUpdates' at which we will take our next sample. */
+  /** 下次采样时，numUpdates的值，即numUpdates的值增长到与nextSampleNum相同时，才会再次采样 */
   private var nextSampleNum: Long = _
 
   resetSamples()
@@ -95,6 +100,7 @@ private[spark] trait SizeTracker {
    */
   def estimateSize(): Long = {
     assert(samples.nonEmpty)
+    // 每次更新字节 * (更新总次数 - 最后更新总次数 )
     val extrapolatedDelta = bytesPerUpdate * (numUpdates - samples.last.numUpdates)
     (samples.last.size + extrapolatedDelta).toLong
   }
