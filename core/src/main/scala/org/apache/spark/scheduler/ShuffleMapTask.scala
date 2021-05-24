@@ -100,7 +100,7 @@ private[spark] class ShuffleMapTask(
     val dep = rddAndDep._2
     // While we use the old shuffle fetch protocol, we use partitionId as mapId in the
     // ShuffleBlockId construction.
-    val mapId = if (SparkEnv.get.conf.get(config.SHUFFLE_USE_OLD_FETCH_PROTOCOL)) { // 判断是否需要兼容shuffle fetch protocol
+    val mapId = if (SparkEnv.get.conf.get(config.SHUFFLE_USE_OLD_FETCH_PROTOCOL)) { // 判断是否需要兼容spark3 之前的shuffle fetch protocol
       partitionId
     } else context.taskAttemptId()
     dep.shuffleWriterProcessor.write(rdd, dep, mapId, context, partition)
