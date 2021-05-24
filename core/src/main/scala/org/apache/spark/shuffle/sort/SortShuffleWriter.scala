@@ -70,6 +70,7 @@ private[spark] class SortShuffleWriter[K, V, C](
       dep.shuffleId, mapId, dep.partitioner.numPartitions)
 
     sorter.writePartitionedMapOutput(dep.shuffleId, mapId, mapOutputWriter)
+    // 获取提交的所有分区
     val partitionLengths = mapOutputWriter.commitAllPartitions().getPartitionLengths
     mapStatus = MapStatus(blockManager.shuffleServerId, partitionLengths, mapId)
   }

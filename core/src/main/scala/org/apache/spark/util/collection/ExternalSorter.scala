@@ -97,19 +97,21 @@ private[spark] class ExternalSorter[K, V, C](
                                               serializer: Serializer = SparkEnv.get.serializer)
   extends Spillable[WritablePartitionedPairCollection[K, C]](context.taskMemoryManager())
     with Logging {
-
+ // 获取配置信息
   private val conf = SparkEnv.get.conf
   // 所有分区
   private val numPartitions = partitioner.map(_.numPartitions).getOrElse(1)
   private val shouldPartition = numPartitions > 1
 
-  // 获取分区
+  // 如果分区大于1，根据分区key获取分区
   private def getPartition(key: K): Int = {
     if (shouldPartition) partitioner.get.getPartition(key) else 0
   }
-
+  // 获取数据块管理器
   private val blockManager = SparkEnv.get.blockManager
+  // 获取磁盘数据块管理器
   private val diskBlockManager = blockManager.diskBlockManager
+  // 获取序列化器
   private val serializerManager = SparkEnv.get.serializerManager
   private val serInstance = serializer.newInstance()
 
@@ -125,6 +127,7 @@ private[spark] class ExternalSorter[K, V, C](
   // NOTE: Setting this too low can cause excessive copying when serializing, since some serializers
   // grow internal data structures by growing + copying every time the number of objects doubles.
   //   spark.shuffle.spill.batchSize=10000
+  // 依次分partition分批次写，每spark.shuffle.spill.batchSize:10000写一次文件
   private val serializerBatchSize = conf.get(config.SHUFFLE_SPILL_BATCH_SIZE)
 
   // Data structures to store in-memory objects before we spill. Depending on whether we have an
@@ -203,7 +206,7 @@ private[spark] class ExternalSorter[K, V, C](
     // 外部排序是否需要聚合
     if (shouldCombine) {
       // Combine values in-memory first using our AppendOnlyMap
-      // mergeValue 是 对 Value 进行 merge的函数
+      // mergeValue是对Value进行 merge的函数
       val mergeValue = aggregator.get.mergeValue
       // createCombiner 为生成 Combiner 的 函数
       val createCombiner = aggregator.get.createCombiner
@@ -220,14 +223,11 @@ private[spark] class ExternalSorter[K, V, C](
         // 首先使用我们的AppendOnlyMap
         // 在内存中对value进行聚合
         map.changeValue((getPartition(kv._1), kv._1), update)
-        // 溢出
-        // 如果缓冲超过阈值，就会溢写到磁盘生成一个文件，每入一条数据就检查一遍内存
+        //  如果缓冲超过阈值，就会溢写到磁盘生成一个文件，每入一条数据就检查一遍内存
         maybeSpillCollection(usingMap = true)
       }
     } else {
-      // Stick values into our buffer
-      // 不在map端合并的情况
-      // 直接把Value插入缓冲区
+      // Stick values into our buffer,直接把Value插入缓冲区
       while (records.hasNext) {
         addElementsRead()
         val kv = records.next()
