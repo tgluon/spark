@@ -241,6 +241,7 @@ final class ShuffleBlockFetcherIterator(
     reqsInFlight += 1
 
     // so we can look up the block info of each blockID
+    // 可根据blockID查询block大小
     val infoMap = req.blocks.map {
       case FetchBlockInfo(blockId, size, mapIndex) => (blockId.toString, (size, mapIndex))
     }.toMap
@@ -249,6 +250,7 @@ final class ShuffleBlockFetcherIterator(
     val address = req.address
 
     val blockFetchingListener = new BlockFetchingListener {
+      // 请求成功
       override def onBlockFetchSuccess(blockId: String, buf: ManagedBuffer): Unit = {
         // Only add the buffer to results queue if the iterator is not zombie,
         // i.e. cleanup() has not been called yet.
@@ -265,7 +267,7 @@ final class ShuffleBlockFetcherIterator(
         }
         logTrace(s"Got remote block $blockId after ${Utils.getUsedTimeNs(startTimeNs)}")
       }
-
+      // 请求失败
       override def onBlockFetchFailure(blockId: String, e: Throwable): Unit = {
         logError(s"Failed to get block(s) from ${req.address.host}:${req.address.port}", e)
         results.put(new FailureFetchResult(BlockId(blockId), infoMap(blockId)._2, address, e))
@@ -413,7 +415,9 @@ final class ShuffleBlockFetcherIterator(
    */
   private[this] def fetchLocalBlocks(): Unit = {
     logDebug(s"Start fetching local blocks: ${localBlocks.mkString(", ")}")
+    // 获取迭代器
     val iter = localBlocks.iterator
+    // 遍历获取数据
     while (iter.hasNext) {
       val (blockId, mapIndex) = iter.next()
       try {
@@ -540,20 +544,24 @@ final class ShuffleBlockFetcherIterator(
     context.addTaskCompletionListener(onCompleteCallback)
 
     // Partition blocks by the different fetch modes: local, host-local and remote blocks.
+    // 划分本地和远程的blocks
     val remoteRequests = partitionBlocksByFetchMode()
     // Add the remote requests into our queue in a random order
+    // 把远程请求随机的添加到队列中
     fetchRequests ++= Utils.randomize(remoteRequests)
     assert ((0 == reqsInFlight) == (0 == bytesInFlight),
       "expected reqsInFlight = 0 but found reqsInFlight = " + reqsInFlight +
       ", expected bytesInFlight = 0 but found bytesInFlight = " + bytesInFlight)
 
     // Send out initial requests for blocks, up to our maxBytesInFlight
+    // 发送远程请求获取blocks
     fetchUpToMaxBytes()
 
     val numFetches = remoteRequests.size - fetchRequests.size
     logInfo(s"Started $numFetches remote fetches in ${Utils.getUsedTimeNs(startTimeNs)}")
 
     // Get Local Blocks
+    // 获取本地的Blocks
     fetchLocalBlocks()
     logDebug(s"Got local blocks in ${Utils.getUsedTimeNs(startTimeNs)}")
 
@@ -711,6 +719,7 @@ final class ShuffleBlockFetcherIterator(
     // Process any outstanding deferred fetch requests if possible.
     if (deferredFetchRequests.nonEmpty) {
       for ((remoteAddress, defReqQueue) <- deferredFetchRequests) {
+        // 单次航班请求数要小于最大航班请求数, 单次航班字节数数要小于最大航班字节数
         while (isRemoteBlockFetchable(defReqQueue) &&
             !isRemoteAddressMaxedOut(remoteAddress, defReqQueue.front)) {
           val request = defReqQueue.dequeue()

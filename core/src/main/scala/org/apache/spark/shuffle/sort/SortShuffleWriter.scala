@@ -31,9 +31,9 @@ private[spark] class SortShuffleWriter[K, V, C](
     context: TaskContext,
     shuffleExecutorComponents: ShuffleExecutorComponents)
   extends ShuffleWriter[K, V] with Logging {
-
+// 获取依赖
   private val dep = handle.dependency
-
+  // 获取blockManager
   private val blockManager = SparkEnv.get.blockManager
 
   private var sorter: ExternalSorter[K, V, _] = null
@@ -44,7 +44,7 @@ private[spark] class SortShuffleWriter[K, V, C](
   private var stopping = false
 
   private var mapStatus: MapStatus = null
-
+   // write监控
   private val writeMetrics = context.taskMetrics().shuffleWriteMetrics
 
   /** Write a bunch of records to this task's output */

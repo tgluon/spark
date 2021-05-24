@@ -56,6 +56,7 @@ private[spark] trait ShuffleManager {
       endPartition: Int,
       context: TaskContext,
       metrics: ShuffleReadMetricsReporter): ShuffleReader[K, C] = {
+    // 生成返回 BlockStoreShuffleReader
     getReader(handle, 0, Int.MaxValue, startPartition, endPartition, context, metrics)
   }
 

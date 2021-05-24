@@ -66,6 +66,7 @@ private[spark] class BlockStoreShuffleReader[K, C](
 
   /** Read the combined key-values for this reduce task */
   override def read(): Iterator[Product2[K, C]] = {
+    // 实例化ShuffleBlockFetcherIterator
     val wrappedStreams = new ShuffleBlockFetcherIterator(
       context,
       blockManager.blockStoreClient,
@@ -73,11 +74,17 @@ private[spark] class BlockStoreShuffleReader[K, C](
       blocksByAddress,
       serializerManager.wrapStream,
       // Note: we use getSizeAsMb when no suffix is provided for backwards compatibility
+      // 设置每次传输的大小,spark.reducer.maxReqsInFlight
       SparkEnv.get.conf.get(config.REDUCER_MAX_SIZE_IN_FLIGHT) * 1024 * 1024,
+      // spark.reducer.maxReqsInFlight
       SparkEnv.get.conf.get(config.REDUCER_MAX_REQS_IN_FLIGHT),
+      // spark.reducer.maxBlocksInFlightPerAddress
       SparkEnv.get.conf.get(config.REDUCER_MAX_BLOCKS_IN_FLIGHT_PER_ADDRESS),
+      // spark.network.maxRemoteBlockSizeFetchToMem
       SparkEnv.get.conf.get(config.MAX_REMOTE_BLOCK_SIZE_FETCH_TO_MEM),
+      // spark.shuffle.detectCorrupt
       SparkEnv.get.conf.get(config.SHUFFLE_DETECT_CORRUPT),
+      // spark.shuffle.detectCorrupt.useExtraMemory
       SparkEnv.get.conf.get(config.SHUFFLE_DETECT_CORRUPT_MEMORY),
       readMetrics,
       fetchContinuousBlocksInBatch).toCompletionIterator
@@ -85,6 +92,7 @@ private[spark] class BlockStoreShuffleReader[K, C](
     val serializerInstance = dep.serializer.newInstance()
 
     // Create a key/value iterator for each stream
+    // 对每个流生成 k/v 迭代器
     val recordIter = wrappedStreams.flatMap { case (blockId, wrappedStream) =>
       // Note: the asKeyValueIterator below wraps a key/value iterator inside of a
       // NextIterator. The NextIterator makes sure that close() is called on the
@@ -93,25 +101,31 @@ private[spark] class BlockStoreShuffleReader[K, C](
     }
 
     // Update the context task metrics for each record read.
+    // 生成完整的迭代器
     val metricIter = CompletionIterator[(Any, Any), Iterator[(Any, Any)]](
       recordIter.map { record =>
         readMetrics.incRecordsRead(1)
         record
       },
+      // 每条记录读取后更新任务度量
       context.taskMetrics().mergeShuffleReadMetrics())
 
     // An interruptible iterator must be used here in order to support task cancellation
+    // 传入metricIter到可中断的迭代器,为了能取消迭代
     val interruptibleIter = new InterruptibleIterator[(Any, Any)](context, metricIter)
 
     val aggregatedIter: Iterator[Product2[K, C]] = if (dep.aggregator.isDefined) {
+      // 若需要对数据进行聚合
       if (dep.mapSideCombine) {
         // We are reading values that are already combined
+        // 若需要进行Map端（对于下一个Shuffle来说）的合并
         val combinedKeyValuesIterator = interruptibleIter.asInstanceOf[Iterator[(K, C)]]
         dep.aggregator.get.combineCombinersByKey(combinedKeyValuesIterator, context)
       } else {
         // We don't know the value type, but also don't care -- the dependency *should*
         // have made sure its compatible w/ this aggregator, which will convert the value
         // type to the combined type C
+        // 若只需要进行Reduce端（对于下一个Shuffle来说）的合并
         val keyValuesIterator = interruptibleIter.asInstanceOf[Iterator[(K, Nothing)]]
         dep.aggregator.get.combineValuesByKey(keyValuesIterator, context)
       }
@@ -123,6 +137,7 @@ private[spark] class BlockStoreShuffleReader[K, C](
     val resultIter = dep.keyOrdering match {
       case Some(keyOrd: Ordering[K]) =>
         // Create an ExternalSorter to sort the data.
+        // 若需要排序,若spark.shuffle.spill设置为否的话,将不会spill到磁盘
         val sorter =
           new ExternalSorter[K, C, C](context, ordering = Some(keyOrd), serializer = dep.serializer)
         sorter.insertAll(aggregatedIter)

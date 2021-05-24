@@ -320,6 +320,7 @@ private[spark] abstract class MapOutputTracker(conf: SparkConf) extends Logging 
    */
   protected def askTracker[T: ClassTag](message: Any): T = {
     try {
+      // 向trackerEndpoint发送消息GetMapOutputStatuses(shuffleId)
       trackerEndpoint.askSync[T](message)
     } catch {
       case e: Exception =>
@@ -411,6 +412,7 @@ private[spark] class MapOutputTrackerMaster(
   private val maxRpcMessageSize = RpcUtils.maxMessageSizeBytes(conf)
 
   // requests for map output statuses
+  // 向mapOutputRequests加入GetMapOutputMessage(shuffleId, context)消息。这里的mapOutputRequests是链式阻塞队列。
   private val mapOutputRequests = new LinkedBlockingQueue[GetMapOutputMessage]
 
   // Thread pool used for handling map output status requests. This is a separate thread pool
@@ -439,6 +441,7 @@ private[spark] class MapOutputTrackerMaster(
   }
 
   /** Message loop used for dispatching messages. */
+  /** MessageLoop启一个线程不断的参数从mapOutputRequests读取数据：*/
   private class MessageLoop extends Runnable {
     override def run(): Unit = {
       try {
@@ -457,6 +460,7 @@ private[spark] class MapOutputTrackerMaster(
               " to " + hostPort)
             val shuffleStatus = shuffleStatuses.get(shuffleId).head
             context.reply(
+              // 若读到数据,则序列化, 返回数据
               shuffleStatus.serializedMapStatus(broadcastManager, isLocal, minSizeForBroadcast,
                 conf))
           } catch {
@@ -807,6 +811,7 @@ private[spark] class MapOutputTrackerWorker(conf: SparkConf) extends MapOutputTr
       startPartition: Int,
       endPartition: Int): Iterator[(BlockManagerId, Seq[(BlockId, Long, Int)])] = {
     logDebug(s"Fetching outputs for shuffle $shuffleId")
+    // 得到元数据
     val statuses = getStatuses(shuffleId, conf)
     try {
       val actualEndMapIndex = if (endMapIndex == Int.MaxValue) statuses.length else endMapIndex
@@ -829,17 +834,23 @@ private[spark] class MapOutputTrackerWorker(conf: SparkConf) extends MapOutputTr
    * (It would be nice to remove this restriction in the future.)
    */
   private def getStatuses(shuffleId: Int, conf: SparkConf): Array[MapStatus] = {
+    // 尝试从本地获取数据
     val statuses = mapStatuses.get(shuffleId).orNull
     if (statuses == null) {
+      // 若本地无数据
       logInfo("Don't have map outputs for shuffle " + shuffleId + ", fetching them")
       val startTimeNs = System.nanoTime()
       fetchingLock.withLock(shuffleId) {
+        // 尝试直接获取数据
         var fetchedStatuses = mapStatuses.get(shuffleId).orNull
         if (fetchedStatuses == null) {
           logInfo("Doing the fetch; tracker endpoint = " + trackerEndpoint)
+          // 远程获取
           val fetchedBytes = askTracker[Array[Byte]](GetMapOutputStatuses(shuffleId))
+          // 反序列化
           fetchedStatuses = MapOutputTracker.deserializeMapStatuses(fetchedBytes, conf)
           logInfo("Got the output locations")
+          // 将数据加入mapStatuses
           mapStatuses.put(shuffleId, fetchedStatuses)
         }
         logDebug(s"Fetching map output statuses for shuffle $shuffleId took " +
@@ -994,6 +1005,7 @@ private[spark] object MapOutputTracker extends Logging {
         logError(errorMessage)
         throw new MetadataFetchFailedException(shuffleId, startPartition, errorMessage)
       } else {
+        // 返回的Seq中的结构是status.location，Seq[ShuffleBlockId,SizeForBlock]
         for (part <- startPartition until endPartition) {
           val size = status.getSizeForBlock(part)
           if (size != 0) {
@@ -1003,7 +1015,7 @@ private[spark] object MapOutputTracker extends Logging {
         }
       }
     }
-
+    // 对Seq根据status.location进行排序
     splitsByAddress.mapValues(_.toSeq).iterator
   }
 }
