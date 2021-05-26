@@ -290,6 +290,7 @@ private[spark] class ExecutorAllocationManager(
    * under the current load to satisfy all running and pending tasks, rounded up.
    */
   private def maxNumExecutorsNeededPerResourceProfile(rpId: Int): Int = {
+    // 获取pending的个数
     val pending = listener.totalPendingTasksPerResourceProfile(rpId)
     val pendingSpeculative = listener.pendingSpeculativeTasksPerResourceProfile(rpId)
     val unschedulableTaskSets = listener.pendingUnschedulableTaskSetsPerResourceProfile(rpId)
