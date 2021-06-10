@@ -50,6 +50,12 @@ object SparkTransportConf {
     val numThreads = NettyUtils.defaultNumThreads(numUsableCores)
     // override threads configurations with role specific values if specified
     // config order is role > module > default
+    /**
+     * 可以使用SparkTransportConf的fromSparkConf方法来构造TransportConf。传递的三个参数分别为SparkConf、模块名module及可用的内核数numUsableCores。
+     * 如果numUsableCores小于等于0，那么线程数是系统可用处理器的数量，不过系统的内核数不可能全部用于网络传输使用，所以这里还将分配给网络传输的内核数量最多限制在8个。
+     * 最终确定的线程数将被用于设置客户端传输线程数（spark.$module.io.clientThreads属性）和服务端传输线程数（spark.$module.io.serverThreads属性）。
+     * fromSparkConf最终构造TransportConf对象时传递的ConfigProvider为实现了get方法的匿名的内部类，get的实现实际是代理了SparkConf的get方法。
+     */
     Seq("serverThreads", "clientThreads").foreach { suffix =>
       val value = role.flatMap { r => conf.getOption(s"spark.$r.$module.io.$suffix") }
         .getOrElse(

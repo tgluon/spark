@@ -13,6 +13,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * 当客户端连接到服务端时在服务端执行一次的引导程序。
  */
 
 package org.apache.spark.network.server;

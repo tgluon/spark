@@ -42,6 +42,7 @@ import org.apache.spark.network.util.*;
 
 /**
  * Server for the efficient, low-level streaming service.
+ * RPC框架的服务端，提供高效的、低级别的流服务。
  */
 public class TransportServer implements Closeable {
   private static final Logger logger = LoggerFactory.getLogger(TransportServer.class);
@@ -67,9 +68,10 @@ public class TransportServer implements Closeable {
       int portToBind,
       RpcHandler appRpcHandler,
       List<TransportServerBootstrap> bootstraps) {
-    this.context = context;
-    this.conf = context.getConf();
-    this.appRpcHandler = appRpcHandler;
+    this.context = context; // 即参数传递的TransportContext的引用；
+    this.conf = context.getConf(); // 即TransportConf，这里通过调用TransportContext的getConf获取；
+    this.appRpcHandler = appRpcHandler; // 即RPC请求处理器RpcHandler；
+    //  创建一个汇集ByteBuf但对本地线程缓存禁用的分配器
     if (conf.sharedByteBufAllocators()) {
       this.pooledAllocator = NettyUtils.getSharedPooledByteBufAllocator(
           conf.preferDirectBufsForSharedByteBufAllocators(), true /* allowCache */);
@@ -77,7 +79,8 @@ public class TransportServer implements Closeable {
       this.pooledAllocator = NettyUtils.createPooledByteBufAllocator(
           conf.preferDirectBufs(), true /* allowCache */, conf.serverThreads());
     }
-    this.bootstraps = Lists.newArrayList(Preconditions.checkNotNull(bootstraps));
+
+    this.bootstraps = Lists.newArrayList(Preconditions.checkNotNull(bootstraps));    // 即参数传递的TransportServerBootstrap列表；
 
     boolean shouldClose = true;
     try {
@@ -98,13 +101,24 @@ public class TransportServer implements Closeable {
   }
 
   private void init(String hostToBind, int portToBind) {
-
+    /**
+     * 创建bossGroup和workerGroup（根据Netty的API文档，Netty服务端需同时创建bossGroup和workerGroup。）；
+     * 创建一个汇集ByteBuf但对本地线程缓存禁用的分配器；
+     *
+     * 调用Netty的API创建Netty的服务端根引导程序并对其进行配置；
+     *
+     * 为根引导程序设置管道初始化回调函数，此回调函数首先设置TransportServerBootstrap到根引导程序中，然后调用TransportContext的initializePipeline方法初始化Channel的pipeline；
+     *
+     * 给根引导程序绑定Socket的监听端口，最后返回监听的端口。
+     */
+    // 根据Netty的API文档，Netty服务端需同时创建bossGroup和workerGrou
     IOMode ioMode = IOMode.valueOf(conf.ioMode());
     EventLoopGroup bossGroup = NettyUtils.createEventLoop(ioMode, 1,
       conf.getModuleName() + "-boss");
     EventLoopGroup workerGroup =  NettyUtils.createEventLoop(ioMode, conf.serverThreads(),
       conf.getModuleName() + "-server");
 
+    // 创建Netty的服务端根引导程序并对其进行配置
     bootstrap = new ServerBootstrap()
       .group(bossGroup, workerGroup)
       .channel(NettyUtils.getServerChannelClass(ioMode))
@@ -131,6 +145,7 @@ public class TransportServer implements Closeable {
       bootstrap.childOption(ChannelOption.SO_KEEPALIVE, true);
     }
 
+    // 为根引导程序设置管道初始化回调函数
     bootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
       @Override
       protected void initChannel(SocketChannel ch) {
@@ -143,7 +158,7 @@ public class TransportServer implements Closeable {
         context.initializePipeline(ch, rpcHandler);
       }
     });
-
+    // 给根引导程序绑定Socket的监听端口
     InetSocketAddress address = hostToBind == null ?
         new InetSocketAddress(portToBind): new InetSocketAddress(hostToBind, portToBind);
     channelFuture = bootstrap.bind(address);

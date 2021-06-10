@@ -25,6 +25,7 @@ import io.netty.util.NettyRuntime;
 
 /**
  * A central location that tracks all the settings we expose to users.
+ * 传输上下文的配置信息。
  */
 public class TransportConf {
 

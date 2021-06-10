@@ -120,8 +120,10 @@ public class NettyUtils {
     if (numUsableCores > 0) {
       availableCores = numUsableCores;
     } else {
+      // 获取可用的核心数
       availableCores = Runtime.getRuntime().availableProcessors();
     }
+    // 默认是8核心
     return Math.min(availableCores, MAX_DEFAULT_NETTY_THREADS);
   }
 

@@ -48,6 +48,7 @@ import org.apache.spark.network.util.TransportFrameDecoder;
  * [[TransportClient]]. It works by tracking the list of outstanding requests (and their callbacks).
  *
  * Concurrency: thread safe and can be called from multiple threads.
+ * 用于处理服务端的响应，并且对发出请求的客户端进行响应的处理程序。
  */
 public class TransportResponseHandler extends MessageHandler<ResponseMessage> {
   private static final Logger logger = LoggerFactory.getLogger(TransportResponseHandler.class);
