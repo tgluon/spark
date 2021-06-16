@@ -165,41 +165,26 @@ public class TransportClientFactory implements Closeable {
      */
     public TransportClient createClient(String remoteHost, int remotePort, boolean fastFail)
             throws IOException, InterruptedException {
-        /**
-         * 1、调用InetSocketAddress的静态方法createUnresolved构建InetSocketAddress（这种方式创建InetSocketAddress，可以在缓存中已经有TransportClient时避免不必要的域名解析），
-         * 然后从connectionPool中获取与此地址对应的ClientPool，如果没有则需要新建ClientPool，并放入缓存connectionPool中；
-         *
-         * 2、根据numConnectionsPerPeer的大小（使用“spark.+模块名+.io.numConnectionsPerPeer”属性配置），从ClientPool中随机选择一个TransportClient；
-         *
-         * 3、如果ClientPool的clients中在随机产生索引位置不存在TransportClient或者TransportClient没有激活，则进入第5)步，否则对此TransportClient进行第4)步的检查；
-         *
-         * 4、更新TransportClient的channel中配置的TransportChannelHandler的最后一次使用时间，确保channel没有超时，然后检查TransportClient是否是激活状态，最后返回此TransportClient给调用方；
-         *
-         * 5、由于缓存中没有TransportClient可用，于是调用InetSocketAddress的构造器创建InetSocketAddress对象（直接使用InetSocketAddress的构造器创建InetSocketAddress，会进行域名解析），
-         * 在这一步骤多个线程可能会产生竞态条件（由于没有同步处理，所以多个线程极有可能同时执行到此处，都发现缓存中没有TransportClient可用，于是都使用InetSocketAddress的构造器创建InetSocketAddress）；
-         *
-         * 6、第5步中创建InetSocketAddress的过程中产生的竞态条件如果不妥善处理，会产生线程安全问题，所以到了ClientPool的locks数组发挥作用的时候了。按照随机产生的数组索引，
-         * locks数组中的锁对象可以对clients数组中的TransportClient一对一进行同步。即便之前产生了竞态条件，但是在这一步只能有一个线程进入临界区。在临界区内，
-         * 先进入的线程调用重载的createClient方法创建TransportClient对象并放入ClientPool的clients数组中。当率先进入临界区的线程退出临界区后，其他线程才能进入，
-         * 此时发现ClientPool的clients数组中已经存在了TransportClient对象，那么将不再创建TransportClient，而是直接使用它。
-         */
         // Get connection from the connection pool first.
         // If it is not found or not active, create a new one.
         // Use unresolved address here to avoid DNS resolution each time we creates a client.
-        // 创建InetSocketAddress
-        final InetSocketAddress unresolvedAddress =
-                InetSocketAddress.createUnresolved(remoteHost, remotePort);
+
+        // 1、调用InetSocketAddress的静态方法createUnresolved构建InetSocketAddress（这种方式创建InetSocketAddress，可以在缓存中已经有TransportClient时避免不必要的域名解析），
+        // 然后从connectionPool中获取与此地址对应的ClientPool，如果没有则需要新建ClientPool，并放入缓存connectionPool中；
+        final InetSocketAddress unresolvedAddress = InetSocketAddress.createUnresolved(remoteHost, remotePort);
 
         // Create the ClientPool if we don't have it yet.
+        // 2、根据numConnectionsPerPeer的大小（使用“spark.+模块名+.io.numConnectionsPerPeer”属性配置），从ClientPool中随机选择一个TransportClient；
         ClientPool clientPool = connectionPool.get(unresolvedAddress);
         if (clientPool == null) {
             connectionPool.putIfAbsent(unresolvedAddress, new ClientPool(numConnectionsPerPeer));
             clientPool = connectionPool.get(unresolvedAddress);
         }
-        // 随机选择一个TransportClient
+        //  3、如果ClientPool的clients中在随机产生索引位置不存在TransportClient或者TransportClient没有激活，则进入第5)步，否则对此TransportClient进行第4)步的检查；
         int clientIndex = rand.nextInt(numConnectionsPerPeer);
         TransportClient cachedClient = clientPool.clients[clientIndex];
-        // 获取并返回激活的TransportClient
+
+        // 4、更新TransportClient的channel中配置的TransportChannelHandler的最后一次使用时间，确保channel没有超时，然后检查TransportClient是否是激活状态，最后返回此TransportClient给调用方；
         if (cachedClient != null && cachedClient.isActive()) {
             // Make sure that the channel will not timeout by updating the last use time of the
             // handler. Then check that the client is still alive, in case it timed out before
@@ -219,6 +204,8 @@ public class TransportClientFactory implements Closeable {
 
         // If we reach here, we don't have an existing connection open. Let's create a new one.
         // Multiple threads might race here to create new connections. Keep only one of them active.
+        // 5、由于缓存中没有TransportClient可用，于是调用InetSocketAddress的构造器创建InetSocketAddress对象（直接使用InetSocketAddress的构造器创建InetSocketAddress，会进行域名解析），
+         // 在这一步骤多个线程可能会产生竞态条件（由于没有同步处理，所以多个线程极有可能同时执行到此处，都发现缓存中没有TransportClient可用，于是都使用InetSocketAddress的构造器创建InetSocketAddress）；
         final long preResolveHost = System.nanoTime();
         final InetSocketAddress resolvedAddress = new InetSocketAddress(remoteHost, remotePort);
         final long hostResolveTimeMs = (System.nanoTime() - preResolveHost) / 1000000;
@@ -230,6 +217,11 @@ public class TransportClientFactory implements Closeable {
             logger.trace("DNS resolution {} for {} took {} ms",
                     resolvMsg, resolvedAddress, hostResolveTimeMs);
         }
+
+        // 6、第5步中创建InetSocketAddress的过程中产生的竞态条件如果不妥善处理，会产生线程安全问题，所以到了ClientPool的locks数组发挥作用的时候了。按照随机产生的数组索引，
+        // locks数组中的锁对象可以对clients数组中的TransportClient一对一进行同步。即便之前产生了竞态条件，但是在这一步只能有一个线程进入临界区。在临界区内，
+        // 先进入的线程调用重载的createClient方法创建TransportClient对象并放入ClientPool的clients数组中。当率先进入临界区的线程退出临界区后，其他线程才能进入，
+        // 此时发现ClientPool的clients数组中已经存在了TransportClient对象，那么将不再创建TransportClient，而是直接使用它。
         // 创建并返回TransportClient对象
         synchronized (clientPool.locks[clientIndex]) {
             cachedClient = clientPool.clients[clientIndex];
