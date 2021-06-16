@@ -203,10 +203,13 @@ private[spark] class TaskSchedulerImpl(
 
   def initialize(backend: SchedulerBackend): Unit = {
     this.backend = backend
+    // 判断调度方式
     schedulableBuilder = {
       schedulingMode match {
+          // FIFO调度模式
         case SchedulingMode.FIFO =>
           new FIFOSchedulableBuilder(rootPool)
+          // FAIR 调度模式
         case SchedulingMode.FAIR =>
           new FairSchedulableBuilder(rootPool, conf)
         case _ =>
@@ -257,6 +260,11 @@ private[spark] class TaskSchedulerImpl(
         ts.isZombie = true
       }
       stageTaskSets(taskSet.stageAttemptId) = manager
+
+      /**
+       * 调度池初始化
+       * 在DAGScheluer对job划分好stage并以TaskSet的形式提交给TaskScheduler后，TaskScheduler的实现类会为每个TaskSet创建一个TaskSetMagager对象，并将该对象添加到调度池中
+       */
       schedulableBuilder.addTaskSetManager(manager, manager.taskSet.properties)
 
       if (!isLocal && !hasReceivedTask) {

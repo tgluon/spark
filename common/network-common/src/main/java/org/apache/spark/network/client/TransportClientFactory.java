@@ -281,13 +281,13 @@ public class TransportClientFactory implements Closeable {
     /**
      * Create a completely new {@link TransportClient} to the remote address.
      * 1、构建根引导器Bootstrap并对其进行配置；
-     *
+     * <p>
      * 2、为根引导程序设置管道初始化回调函数，此回调函数将调用TransportContext的initializePipeline方法初始化Channel的pipeline；
-     *
+     * <p>
      * 使用根引导程序连接远程服务器，当连接成功对管道初始化时会回调初始化回调函数，将TransportClient和Channel对象分别设置到原子引用clientRef与channelRef中；
-     *
+     * <p>
      * 3、给TransportClient设置客户端引导程序，即设置TransportClientFactory中的TransportClientBootstrap列表；
-     *
+     * <p>
      * 4、最后返回此TransportClient对象。
      */
     @VisibleForTesting
@@ -302,8 +302,14 @@ public class TransportClientFactory implements Closeable {
         bootstrap.group(workerGroup)
                 .channel(socketChannelClass)
                 // Disable Nagle's Algorithm since we don't want packets to wait
+                //  在TCP/IP协议中，无论发送多少数据，总是要在数据前面加上协议头，同时，对方接收到数据，
+                //  也需要发送ACK表示确认。为了尽可能的利用网络带宽，TCP总是希望尽可能的发送足够大的数据。
+                //  这里就涉及到一个名为Nagle的算法，该算法的目的就是为了尽可能发送大块数据，避免网络中充斥着许多小数据块。
                 .option(ChannelOption.TCP_NODELAY, true)
+                // Channeloption.SO_KEEPALIVE参数对应于套接字选项中的SO_KEEPALIVE，该参数用于设置TCP连接，当设置该选项以后，连接会测试链接的状态，
+                // 这个选项用于可能长时间没有数据交流的连接。当设置该选项以后，如果在两小时内没有数据的通信时，TCP会自动发送一个活动探测数据报文。
                 .option(ChannelOption.SO_KEEPALIVE, true)
+                // 连接超时时间
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, conf.connectionTimeoutMs())
                 .option(ChannelOption.ALLOCATOR, pooledAllocator);
 

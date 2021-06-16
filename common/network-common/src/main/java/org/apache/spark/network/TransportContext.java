@@ -126,6 +126,7 @@ public class TransportContext implements Closeable {
     if (conf.getModuleName() != null &&
         conf.getModuleName().equalsIgnoreCase("shuffle") &&
         !isClientOnly && conf.separateChunkFetchRequest()) {
+      // 创建netty 事件
       chunkFetchWorkers = NettyUtils.createEventLoop(
           IOMode.valueOf(conf.ioMode()),
           conf.chunkFetchHandlerThreads(),
@@ -172,7 +173,7 @@ public class TransportContext implements Closeable {
   public TransportServer createServer() {
     return createServer(0, new ArrayList<>());
   }
-
+   // 建立netty pipeline
   public TransportChannelHandler initializePipeline(SocketChannel channel) {
     return initializePipeline(channel, rpcHandler);
   }

@@ -59,12 +59,15 @@ public class NettyUtils {
 
   /** Creates a Netty EventLoopGroup based on the IOMode. */
   public static EventLoopGroup createEventLoop(IOMode mode, int numThreads, String threadPrefix) {
+    // 使用netty 创建线程工厂
     ThreadFactory threadFactory = createThreadFactory(threadPrefix);
 
     switch (mode) {
       case NIO:
+        // 创建NIO事件
         return new NioEventLoopGroup(numThreads, threadFactory);
       case EPOLL:
+        // 创建Epoll 事件
         return new EpollEventLoopGroup(numThreads, threadFactory);
       default:
         throw new IllegalArgumentException("Unknown io mode: " + mode);
