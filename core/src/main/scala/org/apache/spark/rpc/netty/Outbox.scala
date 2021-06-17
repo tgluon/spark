@@ -92,6 +92,11 @@ private[netty] case class RpcOutboxMessage(
 
 }
 
+/**
+ * 一个远程端点对应一个发件箱，NettyRpcEnv 中包含一个 ConcurrentHashMap[RpcAddress, Outbox]。当消息放入 Outbox 后，紧接着将消息通过 TransportClient 发送出去。
+ * @param nettyEnv
+ * @param address
+ */
 private[netty] class Outbox(nettyEnv: NettyRpcEnv, val address: RpcAddress) {
 
   outbox => // Give this an alias so we can use it more clearly in closures.

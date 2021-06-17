@@ -31,9 +31,10 @@ import org.apache.spark.rpc._
 
 /**
  * A message dispatcher, responsible for routing RPC messages to the appropriate endpoint(s).
- *
+ *消息分发器(来自netty的概念)，负责将 RpcMessage 分发至对应的 RpcEndpoint。Dispatcher 中包含一个 MessageLoop，它读取 LinkedBlockingQueue 中的投递 RpcMessage，根据客户端指定的 Endpoint 标识，找到 Endpoint 的 Inbox，然后投递进去，由于是阻塞队列，当没有消息的时候自然阻塞，一旦有消息，就开始工作。Dispatcher 的 ThreadPool 负责消费这些 Message。
  * @param numUsableCores Number of CPU cores allocated to the process, for sizing the thread pool.
  *                       If 0, will consider the available CPUs on the host.
+ *
  */
 private[netty] class Dispatcher(nettyEnv: NettyRpcEnv, numUsableCores: Int) extends Logging {
 

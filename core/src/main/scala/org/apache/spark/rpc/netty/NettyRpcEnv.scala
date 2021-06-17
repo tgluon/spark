@@ -42,6 +42,14 @@ import org.apache.spark.rpc._
 import org.apache.spark.serializer.{JavaSerializer, JavaSerializerInstance, SerializationStream}
 import org.apache.spark.util.{ByteBufferInputStream, ByteBufferOutputStream, ThreadUtils, Utils}
 
+/**
+ *  RpcEnv的唯一实现类
+ * @param conf
+ * @param javaSerializerInstance
+ * @param host
+ * @param securityManager
+ * @param numUsableCores
+ */
 private[netty] class NettyRpcEnv(
     val conf: SparkConf,
     javaSerializerInstance: JavaSerializerInstance,
@@ -526,6 +534,8 @@ private[rpc] class NettyRpcEnvFactory extends RpcEnvFactory with Logging {
  * a client connection, since the process hosting the endpoint is not listening for incoming
  * connections. These refs should not be shared with 3rd parties, since they will not be able to
  * send messages to the endpoint.
+ *
+ * RpcEndpointRef 的唯一实现类，RpcEndpointRef的NettyRpcEnv版本。此类的行为取决于它的创建位置。在“拥有”RpcEndpoint的节点上，它是RpcEndpointAddress实例的简单包装器。
  *
  * @param conf Spark configuration.
  * @param endpointAddress The address where the endpoint is listening.

@@ -50,6 +50,14 @@ import static org.apache.spark.network.util.NettyUtils.getRemoteAddress;
  * on the channel for at least `requestTimeoutMs`. Note that this is duplex traffic; we will not
  * timeout if the client is continuously sending but getting no responses, for simplicity.
  * 代理由TransportRequestHandler处理的请求和由TransportResponseHandler处理的响应，并加入传输层的处理。
+ *
+ * 传输层的handler，负责委托请求给TransportRequestHandler，委托响应给TransportResponseHandler。在传输层中创建的所有通道都是双向的。
+ * 当客户端使用RequestMessage启动Netty通道（由服务器的RequestHandler处理）时，服务器将生成ResponseMessage（由客户端的ResponseHandler处理）。
+ * ，服务器也会在同一个Channel上获取句柄，因此它可能会开始向客户端发送RequestMessages。这意味着客户端还需要一个RequestHandler，而Server需要一个ResponseHandler，
+ * 用于客户端对服务器请求的响应。此类还处理来自io.netty.handler.timeout.IdleStateHandler的超时。如果存在未完成的提取或RPC请求但是至少在“requestTimeoutMs”上没有通道上的流量，
+ * 我们认为连接超时。请注意，这是双工流量;如果客户端不断发送但是没有响应，我们将不会超时。
+ *
+ * 当TransportChannelHandler读取到的request是RequestMessage类型时，则将此消息的处理进一步交给TransportRequestHandler，当request是ResponseMessage时，则将此消息的处理进一步交给TransportResponseHandler。
  */
 public class TransportChannelHandler extends SimpleChannelInboundHandler<Message> {
   private static final Logger logger = LoggerFactory.getLogger(TransportChannelHandler.class);

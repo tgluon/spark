@@ -24,7 +24,7 @@ import org.apache.spark.SparkException
  *
  * The `rpcAddress` may be null, in which case the endpoint is registered via a client-only
  * connection and can only be reached via the client that sent the endpoint reference.
- *
+ * 主要包含了 RpcAddress (host和port) 和 rpc endpoint name的信息
  * @param rpcAddress The socket address of the endpoint. It's `null` when this address pointing to
  *                   an endpoint in a client `NettyRpcEnv`.
  * @param name Name of the endpoint.

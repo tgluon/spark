@@ -30,6 +30,7 @@ import org.apache.spark.util.RpcUtils
 /**
  * A RpcEnv implementation must have a [[RpcEnvFactory]] implementation with an empty constructor
  * so that it can be created via Reflection.
+ * RpcEnv 抽象类表示一个 RPC Environment，管理着整个RpcEndpoint的生命周期.每个 Rpc 端点运行时依赖的环境称之为 RpcEnv。
  */
 private[spark] object RpcEnv {
 

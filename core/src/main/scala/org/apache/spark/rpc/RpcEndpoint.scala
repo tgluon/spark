@@ -42,6 +42,8 @@ private[spark] trait RpcEnvFactory {
  *
  * If any error is thrown from one of [[RpcEndpoint]] methods except `onError`, `onError` will be
  * invoked with the cause. If `onError` throws an error, [[RpcEnv]] will ignore it.
+ * RPC 端点 ，Spark 将每个通信实体都都称之一个Rpc端点，且都实现 RpcEndpoint 接口，比如DriverEndpoint，MasterEndpont，
+ * 内部根据不同端点的需求，设计不同的消息和不同的业务处理。
  */
 private[spark] trait RpcEndpoint {
 

@@ -29,6 +29,7 @@ import org.apache.spark.network.client.TransportClient;
  * by only one client connection, meaning that getChunk() for a particular stream will be called
  * serially and that once the connection associated with the stream is closed, that stream will
  * never be used again.
+ * 处理ChunkFetchRequest和StreamRequest请求
  */
 public abstract class StreamManager {
   /**
