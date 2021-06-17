@@ -130,7 +130,9 @@ private[netty] class NettyRpcEnv(
       } else {
         java.util.Collections.emptyList()
       }
+    // TransportContext 属于 spark.network 中的部分，负责 RPC 消息在网络中的传输
     server = transportContext.createServer(bindAddress, port, bootstraps) // 创建netty server端
+    // 在每个 RpcEndpoint 注册的时候都会注册一个默认的 RpcEndpointVerifier，它的作用是客户端调用的时候先用它来询问 Endpoint 是否存在。
     dispatcher.registerRpcEndpoint(
       RpcEndpointVerifier.NAME, new RpcEndpointVerifier(this, dispatcher))
   }
@@ -497,11 +499,12 @@ private[rpc] class NettyRpcEnvFactory extends RpcEnvFactory with Logging {
     // 创建用于RPC传输对象的序列化
     val javaSerializerInstance =
       new JavaSerializer(sparkConf).newInstance().asInstanceOf[JavaSerializerInstance]
-    // 创建NettyRpcEnv,对内部哥哥子组件TransportConf/Dispatcher/TransportContext/TransportClientFactory/TransportServer实例化
+    // 创建NettyRpcEnv,对内部各个子组件TransportConf/Dispatcher/TransportContext/TransportClientFactory/TransportServer实例化
     val nettyEnv =
       new NettyRpcEnv(sparkConf, javaSerializerInstance, config.advertiseAddress,
         config.securityManager, config.numUsableCores)
-    if (!config.clientMode) { // 如果是cluster模式
+    // 如果是服务端创建的，那么会启动服务。服务端和客户端都会通过这个方法创建一个 NettyRpcEnv，如果是客户端，直接返回nettyEnv
+    if (!config.clientMode) {
       // 偏函数，输入一个int，返回一个元组
       val startNettyRpcEnv: Int => (NettyRpcEnv, Int) = { actualPort =>
         nettyEnv.startServer(config.bindAddress, actualPort)
