@@ -24,6 +24,7 @@ import io.netty.channel.Channel;
  * A bootstrap which is executed on a TransportServer's client channel once a client connects
  * to the server. This allows customizing the client channel to allow for things such as SASL
  * authentication.
+ * 对服务端的RpcHandler进行代理，接收客户端的请求。
  */
 public interface TransportServerBootstrap {
   /**

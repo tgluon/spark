@@ -42,7 +42,7 @@ import static org.apache.spark.network.util.NettyUtils.getRemoteAddress;
  * channel, in order to clean them up if the channel is terminated (see #channelUnregistered).
  *
  * The messages should have been processed by the pipeline setup by {@link TransportServer}.
- * 用于处理客户端的请求并在写完块数据后返回的处理程序。
+ * TransportRequestHandler实际是把请求消息交给RpcHandler进一步处理的，用于处理客户端的请求并在写完块数据后返回的处理程序。
  */
 public class TransportRequestHandler extends MessageHandler<RequestMessage> {
 

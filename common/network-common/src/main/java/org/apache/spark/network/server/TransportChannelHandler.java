@@ -95,6 +95,7 @@ public class TransportChannelHandler extends SimpleChannelInboundHandler<Message
   @Override
   public void channelActive(ChannelHandlerContext ctx) throws Exception {
     try {
+      // 当被通知 Channel是活跃的时候，发送一条消息
       requestHandler.channelActive();
     } catch (RuntimeException e) {
       logger.error("Exception from request handler while channel is active", e);

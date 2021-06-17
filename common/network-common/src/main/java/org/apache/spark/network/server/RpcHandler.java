@@ -31,7 +31,7 @@ import org.apache.spark.network.client.TransportClient;
  * 对调用传输客户端（TransportClient）的sendRPC方法发送的消息进行处理的程序。
  */
 public abstract class RpcHandler {
-
+   // 仅仅远程处理而不进行回复消息的RPC消息
   private static final RpcResponseCallback ONE_WAY_CALLBACK = new OneWayRpcCallback();
 
   /**
@@ -40,7 +40,8 @@ public abstract class RpcHandler {
    *
    * Neither this method nor #receiveStream will be called in parallel for a single
    * TransportClient (i.e., channel).
-   *
+   * 这是一个抽象方法，用来接收单一的RPC消息，具体处理逻辑需要子类去实现。receive接收三个参数，分别是TransportClient、ByteBuffer和RpcResponseCallback。RpcResponseCallback用于对请求处理结束后进行回调，
+   * 无论处理结果是成功还是失败，RpcResponseCallback都会被调用一次
    * @param client A channel client which enables the handler to make requests back to the sender
    *               of this RPC. This will always be the exact same object for a particular channel.
    * @param message The serialized bytes of the RPC.
