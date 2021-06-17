@@ -369,6 +369,7 @@ public class TransportClientFactory implements Closeable {
     @Override
     public void close() {
         // Go through all clients and close them if they are active.
+        // 获取所有客户端并且关闭
         for (ClientPool clientPool : connectionPool.values()) {
             for (int i = 0; i < clientPool.clients.length; i++) {
                 TransportClient client = clientPool.clients[i];
@@ -379,7 +380,7 @@ public class TransportClientFactory implements Closeable {
             }
         }
         connectionPool.clear();
-
+        // 关闭netty工作组
         if (workerGroup != null && !workerGroup.isShuttingDown()) {
             workerGroup.shutdownGracefully();
         }
