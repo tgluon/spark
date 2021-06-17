@@ -159,6 +159,7 @@ public class NettyUtils {
       boolean allowCache,
       int numCores) {
     if (numCores == 0) {
+      // 获取系统可用核心数
       numCores = Runtime.getRuntime().availableProcessors();
     }
     return new PooledByteBufAllocator(

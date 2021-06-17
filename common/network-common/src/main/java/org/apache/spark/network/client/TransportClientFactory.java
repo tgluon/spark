@@ -95,7 +95,7 @@ public class TransportClientFactory implements Closeable {
 
     private final Class<? extends Channel> socketChannelClass;
     private EventLoopGroup workerGroup;
-    private final PooledByteBufAllocator pooledAllocator;
+    private final PooledByteBufAllocator pooledAllocator;    // 基于内存池的 ByteBuf 的分配器
     private final NettyMemoryMetrics metrics;
     private final int fastFailTimeWindow;
 
@@ -205,7 +205,7 @@ public class TransportClientFactory implements Closeable {
         // If we reach here, we don't have an existing connection open. Let's create a new one.
         // Multiple threads might race here to create new connections. Keep only one of them active.
         // 5、由于缓存中没有TransportClient可用，于是调用InetSocketAddress的构造器创建InetSocketAddress对象（直接使用InetSocketAddress的构造器创建InetSocketAddress，会进行域名解析），
-         // 在这一步骤多个线程可能会产生竞态条件（由于没有同步处理，所以多个线程极有可能同时执行到此处，都发现缓存中没有TransportClient可用，于是都使用InetSocketAddress的构造器创建InetSocketAddress）；
+        // 在这一步骤多个线程可能会产生竞态条件（由于没有同步处理，所以多个线程极有可能同时执行到此处，都发现缓存中没有TransportClient可用，于是都使用InetSocketAddress的构造器创建InetSocketAddress）；
         final long preResolveHost = System.nanoTime();
         final InetSocketAddress resolvedAddress = new InetSocketAddress(remoteHost, remotePort);
         final long hostResolveTimeMs = (System.nanoTime() - preResolveHost) / 1000000;
@@ -364,6 +364,7 @@ public class TransportClientFactory implements Closeable {
 
     /**
      * Close all connections in the connection pool, and shutdown the worker thread pool.
+     * 关闭连接
      */
     @Override
     public void close() {
