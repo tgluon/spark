@@ -122,7 +122,7 @@ private[netty] class NettyRpcEnv(
       } else {
         java.util.Collections.emptyList()
       }
-    server = transportContext.createServer(bindAddress, port, bootstraps)
+    server = transportContext.createServer(bindAddress, port, bootstraps) // 创建netty server端
     dispatcher.registerRpcEndpoint(
       RpcEndpointVerifier.NAME, new RpcEndpointVerifier(this, dispatcher))
   }
@@ -486,12 +486,15 @@ private[rpc] class NettyRpcEnvFactory extends RpcEnvFactory with Logging {
     val sparkConf = config.conf
     // Use JavaSerializerInstance in multiple threads is safe. However, if we plan to support
     // KryoSerializer in future, we have to use ThreadLocal to store SerializerInstance
+    // 创建用于RPC传输对象的序列化
     val javaSerializerInstance =
       new JavaSerializer(sparkConf).newInstance().asInstanceOf[JavaSerializerInstance]
+    // 创建NettyRpcEnv,对内部哥哥子组件TransportConf/Dispatcher/TransportContext/TransportClientFactory/TransportServer实例化
     val nettyEnv =
       new NettyRpcEnv(sparkConf, javaSerializerInstance, config.advertiseAddress,
         config.securityManager, config.numUsableCores)
-    if (!config.clientMode) {
+    if (!config.clientMode) { // 如果是cluster模式
+      // 偏函数，输入一个int，返回一个元组
       val startNettyRpcEnv: Int => (NettyRpcEnv, Int) = { actualPort =>
         nettyEnv.startServer(config.bindAddress, actualPort)
         (nettyEnv, nettyEnv.address.port)
