@@ -59,8 +59,8 @@ import org.apache.spark.network.util.*;
  */
 public class TransportClientFactory implements Closeable {
 
-    /** A simple data structure to track the pool of clients between two peer nodes. */
     /**
+     * A simple data structure to track the pool of clients between two peer nodes.
      * ClientPool实际是由TransportClient的数组构成，而locks数组中的Object与clients数组中的TransportClient按照数组索引一一对应，
      * 通过对每个TransportClient分别采用不同的锁，降低并发情况下线程间对锁的争用，进而减少阻塞，提高并发度
      */
