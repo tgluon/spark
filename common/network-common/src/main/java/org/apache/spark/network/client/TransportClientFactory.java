@@ -312,7 +312,7 @@ public class TransportClientFactory implements Closeable {
         if (conf.sendBuf() > 0) {
             bootstrap.option(ChannelOption.SO_SNDBUF, conf.sendBuf());
         }
-
+        // 操作方法外部的对象,客户端需要保证原子性(备注：按正常多线程操作第三方包，需要保证原子性)
         final AtomicReference<TransportClient> clientRef = new AtomicReference<>();
         final AtomicReference<Channel> channelRef = new AtomicReference<>();
 
