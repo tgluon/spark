@@ -982,6 +982,7 @@ private[spark] object Utils extends Logging {
     if (defaultIpOverride != null) {
       InetAddress.getByName(defaultIpOverride)
     } else {
+      // 获取本机地址
       val address = InetAddress.getLocalHost
       if (address.isLoopbackAddress) {
         // Address resolves to something like 127.0.1.1, which happens on Debian; try to find

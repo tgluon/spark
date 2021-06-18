@@ -376,7 +376,7 @@ private[spark] object CoarseGrainedExecutorBackend extends Logging {
       arguments: Arguments,
       backendCreateFn: (RpcEnv, Arguments, SparkEnv, ResourceProfile) =>
         CoarseGrainedExecutorBackend): Unit = {
-
+    // 初始化守护进程
     Utils.initDaemon(log)
 
     SparkHadoopUtil.get.runAsSparkUser { () =>

@@ -505,7 +505,7 @@ class SparkContext(config: SparkConf) extends Logging {
         _conf.set("spark.app.initial.file.urls", addedFiles.keys.toSeq.mkString(","))
       }
     }
-
+    // executor内存 spark.executor.memory
     _executorMemory = _conf.getOption(EXECUTOR_MEMORY.key)
       .orElse(Option(System.getenv("SPARK_EXECUTOR_MEMORY")))
       .orElse(Option(System.getenv("SPARK_MEM"))
@@ -600,7 +600,7 @@ class SparkContext(config: SparkConf) extends Logging {
         None
       }
     _cleaner.foreach(_.start())
-   // 判断是否开启动态资源配置，即spark.shuffle.service.enabled=true
+   // 判断是否开启动态资源配置，即spark.dynamicAllocation.enabled
     val dynamicAllocationEnabled = Utils.isDynamicAllocationEnabled(_conf)
     _executorAllocationManager =
       if (dynamicAllocationEnabled) {
