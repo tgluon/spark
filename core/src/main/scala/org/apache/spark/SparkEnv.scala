@@ -318,9 +318,13 @@ object SparkEnv extends Logging {
         RpcUtils.makeDriverRef(name, conf, rpcEnv)
       }
     }
-
+    // 广播管理器
     val broadcastManager = new BroadcastManager(isDriver, conf, securityManager)
-
+    /**
+     * mapOutputTracker用于跟踪map阶段任务的输出状态，此状态便于reduce阶段任务获取地址以及中间输出结果。
+     * 每个map任务或者 reduce任务都会有唯一的标识。分别为mapId和reduceId.每个reduce任务的输入可能是多个map任务的输出，
+     * reduce会到各个map任务的所有节点上拉去Block，这一过程交shuffle，每批shuffle过程都有唯一的表示shuffleId。
+     */
     val mapOutputTracker = if (isDriver) {
       new MapOutputTrackerMaster(conf, broadcastManager, isLocal)
     } else {
@@ -345,13 +349,13 @@ object SparkEnv extends Logging {
     val shuffleManager = instantiateClass[ShuffleManager](shuffleMgrClass)
    // 构造内存管理
     val memoryManager: MemoryManager = UnifiedMemoryManager(conf, numUsableCores)
-
+    // 获取blockManager的端口
     val blockManagerPort = if (isDriver) {
       conf.get(DRIVER_BLOCK_MANAGER_PORT)
     } else {
       conf.get(BLOCK_MANAGER_PORT)
     }
-
+   // 构建外部shuffle客户端
     val externalShuffleClient = if (conf.get(config.SHUFFLE_SERVICE_ENABLED)) {
       val transConf = SparkTransportConf.fromSparkConf(conf, "shuffle", numUsableCores)
       Some(new ExternalBlockStoreClient(transConf, securityManager,
@@ -474,6 +478,7 @@ object SparkEnv extends Logging {
 
     // Spark properties
     // This includes the scheduling mode whether or not it is configured (used by SparkUI)
+    // 调度模式 FIFO或者FAIR
     val schedulerMode =
       if (!conf.contains(SCHEDULER_MODE)) {
         Seq((SCHEDULER_MODE.key, schedulingMode))
