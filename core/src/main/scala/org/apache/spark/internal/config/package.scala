@@ -1761,7 +1761,10 @@ package object config {
     .version("0.5.0")
     .stringConf
     .createWithDefault("org.apache.spark.serializer.JavaSerializer")
-
+  /**
+   * spark.serializer.objectStreamReset100当用org.apache.spark.serializer.JavaSerializer序列化时，序列化器通过缓存对象防止写多余的数据，然而这会造成这些对象的垃圾回收停止。
+   * 通过请求’reset’，你从序列化器中flush这些信息并允许收集老的数据。为了关闭这个周期性的reset，你可以将值设为-1。默认情况下，每一百个对象reset一次
+   */
   private[spark] val SERIALIZER_OBJECT_STREAM_RESET =
     ConfigBuilder("spark.serializer.objectStreamReset")
       .version("1.0.0")

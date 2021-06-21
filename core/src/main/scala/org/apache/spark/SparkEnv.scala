@@ -245,7 +245,7 @@ object SparkEnv extends Logging {
       ioEncryptionKey: Option[Array[Byte]],
       listenerBus: LiveListenerBus = null,
       mockOutputCommitCoordinator: Option[OutputCommitCoordinator] = None): SparkEnv = {
-
+     // driver 标志
     val isDriver = executorId == SparkContext.DRIVER_IDENTIFIER
 
     // Listener bus is only used on the driver
